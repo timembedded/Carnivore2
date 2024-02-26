@@ -1,0 +1,17 @@
+(footprint "" (version 20221018) (generator pcbnew)
+  (layer "F.Cu")
+  (property "Sheetfile" "Carnivore2.kicad_sch")
+  (property "Sheetname" "")
+  (property "ki_description" "Mounting Hole without connection")
+  (property "ki_keywords" "mounting hole")
+  (fp_text reference "H1" (at 0 0) (layer "F.SilkS") hide
+      (effects (font (size 1.27 1.27) (thickness 0.15)))
+    (tstamp f685ce2e-858b-4474-aa2c-01cd56037fb7)
+  )
+  (fp_text value "MountingHole" (at 0 0) (layer "F.SilkS") hide
+      (effects (font (size 1.27 1.27) (thickness 0.15)))
+    (tstamp 899424cc-77ea-4a3e-85f4-bbc9d5ceaae0)
+  )
+  (pad "" np_thru_hole circle (at 0 0) (size 4.66522 4.66522) (drill 4.66522) (layers "*.Cu" "*.Mask")
+    (solder_mask_margin 0.00419) (clearance 0.25819) (tstamp 73d9ba08-451c-4811-9689-8e8dd157e0f6))
+)
