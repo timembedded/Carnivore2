@@ -6072,7 +6072,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C15"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R57"
@@ -6084,13 +6084,13 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C14"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C13"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R44"
@@ -6102,7 +6102,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C7"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R47"
@@ -6114,61 +6114,61 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C12"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C11"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C6"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C8"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C16"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C30"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C10"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C17"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C18"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C19"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R54"
@@ -6197,7 +6197,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C9"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R53"
@@ -6333,7 +6333,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C25"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R64"
@@ -6345,7 +6345,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C24"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C26"
@@ -6358,7 +6358,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C27"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "R102"
@@ -6656,7 +6656,7 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
   (compInst "C5"
     (compRef "C_0805_1")
     (originalName "C_0805")
-    (compValue "0.1")
+    (compValue "100nF")
     (patternName "C0805_133B")
   )
   (compInst "C21"

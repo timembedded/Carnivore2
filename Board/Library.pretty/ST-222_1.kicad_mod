@@ -42,4 +42,9 @@
   (pad "M" thru_hole circle (at 0 5 180) (size 1.9 1.9) (drill 1.2) (layers "*.Cu" "*.Mask") (tstamp e1bb3bb8-674f-49b3-9dbb-4d68caf34dbd))
   (pad "M" thru_hole circle (at 5 -2.5 180) (size 1.9 1.9) (drill 1.2) (layers "*.Cu" "*.Mask") (tstamp e44c09eb-1637-4e69-aa3c-071abfb1b0e8))
   (pad "M" thru_hole circle (at 5 0 180) (size 1.9 1.9) (drill 1.2) (layers "*.Cu" "*.Mask") (tstamp 9e730e16-1c39-46cb-a812-7f871d6a6ee7))
+  (model "${KIPRJMOD}/3d/CUI_DEVICES_SJ1-3525N.step"
+    (offset (xyz 0 6.8 2.9))
+    (scale (xyz 1 1 1))
+    (rotate (xyz 90 180 0))
+  )
 )

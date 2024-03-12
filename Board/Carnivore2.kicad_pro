@@ -34,9 +34,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.762,
-          "height": 1.524,
-          "width": 1.524
+          "drill": 4.66522,
+          "height": 4.66522,
+          "width": 4.66522
         },
         "silk_line_width": 0.09999999999999999,
         "silk_text_italic": false,
@@ -460,7 +460,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "Carnivore2.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""

@@ -54,4 +54,14 @@
   (pad "8" thru_hole circle (at -7.62 2.54) (size 1.524 1.524) (drill 0.9652) (layers "*.Cu" "*.Mask") (tstamp 8720b328-c73c-449d-9e63-5bc062a4fac2))
   (pad "9" thru_hole circle (at -10.16 0) (size 1.524 1.524) (drill 0.9652) (layers "*.Cu" "*.Mask") (tstamp e9f131a6-fc33-4d16-83c5-1a28e05e6cbd))
   (pad "10" thru_hole circle (at -10.16 2.54) (size 1.524 1.524) (drill 0.9652) (layers "*.Cu" "*.Mask") (tstamp 26df5144-e6bc-431a-ba75-e823d72e0845))
+  (model "${KIPRJMOD}/3d/302-S101.step"
+    (offset (xyz -5.08 -1.27 0))
+    (scale (xyz 1 1 1))
+    (rotate (xyz -90 0 180))
+  )
+  (model "${KIPRJMOD}/3d/header_awhw10g-0202-t.stp" hide
+    (offset (xyz -5.08 -1.27 0.18))
+    (scale (xyz 1 1 1))
+    (rotate (xyz 0 0 0))
+  )
 )
