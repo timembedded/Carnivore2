@@ -68,25 +68,24 @@ entity mcscc is
 	pPIN180		: OUT std_logic;
 	pIDE_Rst_n	: OUT std_logic;
 	
--- Mapper port register read enable	
-	MAPpEn		: IN std_logic;
+    -- DAC
+    dac_xsmt    : OUT std_logic;
+    dac_lrck    : OUT std_logic;
+    dac_din     : OUT std_logic;
+    dac_bck     : OUT std_logic;
+    dac_sck     : OUT std_logic;
+    dac_flt     : OUT std_logic;
+    dac_demp    : OUT std_logic;
 
---	wav			: OUT std_logic_vector(9 downto 0);
--- Key
-    Key1_n		: IN std_logic;
-	
--- PLL out
-	CLK50		: IN std_logic;
---    c0			: OUT std_logic
--- DAC YAC516
-	MCLK	: OUT std_logic;
-	BICK	: OUT std_logic;
-	LRCK	: OUT std_logic;
-	SDATA	: OUT std_logic;
-	CKS		: OUT std_logic;
-	IC_n	: OUT std_logic;
+    -- ADC
+    adc_md      : OUT std_logic_vector(1 downto 0);
+    adc_scki    : OUT std_logic;
+    adc_bck     : OUT std_logic;
+    adc_lrck    : OUT std_logic;
+    adc_dout    : IN std_logic;
+
 --	PDIN_n
-    SDOpo	: INOUT std_logic;
+--    SDOpo	: INOUT std_logic;
 --  EEPROM
     EECS	: OUT std_logic;
     EECK	: OUT std_logic;
@@ -417,7 +416,6 @@ architecture RTL of mcscc is
   
 -- Sltsel
   signal pSltSltsl_n :std_logic;
-  signal SltslEn	: std_logic;
   signal pSltSltslt_n	: std_logic;
   signal sltt	: std_logic;
 -- Not Standart
@@ -475,21 +473,19 @@ architecture RTL of mcscc is
   signal PF0_RV :std_logic_vector(1 downto 0);
   signal CrSlt 	:std_logic_vector(1 downto 0);
   signal PFXN :std_logic_vector(1 downto 0):= "00";
+-- Mapper port register read enable	
+  signal MAPpEn : std_logic;
 begin
-  ----------------------------------------------------------------
-  -- Slot Select Disable trigger key
-  ----------------------------------------------------------------
-  pSltSltsl_n <= pSltSltslt_n when SltslEn	= '1'
-						      else '1';
-  process(pSltRst_n, Key1_n)
-  begin
-    if (Key1_n = '1') then
-      SltslEn	<= '1';
-    elsif (pSltRst_n = '0') then
-	  SltslEn   <= '0';
-    end if;
-  end process;
 
+  MAPpEn <= '1';
+
+  pSltSltsl_n <= pSltSltslt_n;
+
+  -- ADC
+  adc_md <= "00";
+  adc_scki <= '0';
+  adc_bck  <= '0';
+  adc_lrck <= '0';
 
   ----------------------------------------------------------------
   -- Expand Slot Processing
@@ -1451,7 +1447,7 @@ begin
       WR_hT2 <= WR_hT1;
     end if;
   end process;
-  process(pSltWr_n,WR_hT2,IDEReg,pSltAdr(9),pSltAdr(0))
+  process(pSltWr_n,WR_hT2,IDEReg,pSltAdr)
   begin
     if (pSltWr_n = '1') then
       WR_hT1 <= '0';
@@ -1552,7 +1548,7 @@ begin
 --  
 --  end process ;  
 
-  process (pSltRd_n,LRD)
+  process (pSltRd_n,LRD,pSltClk)
   begin
  --   if    (pSltRd_n = '0' and LRD = '1') then Rd_n <= '0';
  --   elsif (pSltRd_n = '1' and LRD = '0') then Rd_n <= '1';
@@ -1569,7 +1565,7 @@ begin
       if pSltRd_n = '1' then Rd_n1 <= '1'; end if;
     end if;
   end process;
-  process (pSltWr_n)
+  process (pSltWr_n,LRD,Wr_n)
   begin
     if    (pSltWr_n = '0' and LRD = '1') then Wr_n <= '0';
     elsif (pSltWr_n = '1' and LRD = '0') then Wr_n <= '1';
@@ -1587,7 +1583,7 @@ begin
 ----------------------------------------------------------------
   DecIDEconf <= '1' when Sltsl_D_n = '0' and pSltAdr(15 downto 0) = "0100000100000100" 
                    else '0';
-    process(pSltRst_n, pSltClk_n)
+    process(pSltRst_n, pSltClk_n, Wr_n)
   begin
     if (pSltRst_n = '0') then
       cReg			<= "00000000";
@@ -1621,7 +1617,7 @@ begin
 ---      end if;
 ---    end if;    
 ---  end process;
-  process(Rd_n,pSltWr_n,IDEReg,pSltDat,pSltAdr(9),pSltAdr(0),pIDEDat(15 downto 8),pSltClk)
+  process(Rd_n,IDEReg,pSltAdr,pIDEDat,pSltClk)
   begin
    if pSltClk'event and pSltClk = '1' then
       if(IDEReg = '1' and pSltAdr(9) = '0' and  pSltAdr(0) = '0' and Rd_n = '0') then
@@ -1629,7 +1625,7 @@ begin
       end if;
    end if;
   end process;
-  process(IDEReg)
+  process(IDEReg,pSltWr_n,pSltAdr,pSltDat)
   begin
     if (IDEReg = '1' and pSltAdr(9) = '0' and pSltWr_n = '0' and pSltAdr(0) = '0') then 
       IDEsOUT <=  pSltDat;	
@@ -1828,7 +1824,7 @@ begin
 --  SCR <= ("0"&RO&"0")+('0'&(SccAmp+"10000000000")) ;
   SCL <= "100000000000" + SccAmp ;--+ PsgAmp + KC ;
   SCR <= "100000000000" + SccAmp;-- + PsgAmp + KC ;
-  process (pSltClk_n)
+  process (pSltClk_n,pSltRst_n)
   begin
     if pSltRst_n = '0' then FDIV <= "00000000";
     elsif pSltClk_n'event and pSltClk_n = '1' then
@@ -1915,14 +1911,14 @@ begin
 ----------------------------------------------------------------
 -- MACP <= PsgAmp;
   SCP <= PsgAmp(9 downto 0);
-  process (pSltClk_n,resP)
+  process (pSltClk_n,resP,LVL1,SCP)
   begin
     if resP = '1' or LVL1(7) = '0' then ACP <= (others => '0');
-    elsif pSltClk_n'event and pSltClk_n ='0' then  
-       ACP <= ACP + ("000000000" & SCP);     
+    elsif pSltClk_n'event and pSltClk_n ='0' then
+       ACP <= ACP + ("000000000" & SCP);
     end if;
   end process;
-  process (SDAC,pSltClk_n)
+  process (SDAC,pSltClk_n,ACP)
   begin
     if pSltClk_n ='0' then resP <= '0';
     elsif SDAC'event and SDAC = '0' then
@@ -1935,7 +1931,7 @@ begin
 -- Filter Beeper
 ----------------------------------------------------------------    
 --  MACB <=  KC & "000000"
-  process (pSltClk_n,resB)
+  process (pSltClk_n,resB,LVL1)
   begin
     if resB = '1' or LVL1(6) = '0' then ACB <= (others => '0');
     elsif pSltClk_n'event and pSltClk_n ='0' then  
@@ -1972,7 +1968,10 @@ begin
 -- DAC control -- Audio DAC YAC516 ( -1 = 8000, 0=0, +1 = 7FFF
 ----------------------------------------------------------------
 
- -- mCLC <=c0; 
+  dac_xsmt <= '1';
+  dac_flt  <= '0';
+  dac_demp <= '0';
+
 -- divider 
   process(c0,pSltRst_n)-- c0 = 11.2896 MHz / LRCK = 44.1 kHz
   begin
@@ -1981,14 +1980,14 @@ begin
       ADACDiv <= ADACDiv + "00000001" ;
     end if;
   end process;
-  MCLK <= c0; 
-  BICK <= ADACDiv(2);
-  LRCK <= NOT ADACDiv(7);
+  dac_sck <= c0; 
+  dac_bck <= ADACDiv(2);
+  dac_lrck <= NOT ADACDiv(7);
 -- lach L_DAC , R_DAC
-  process(ADACDiv(2))
+  process(ADACDiv,c0)
   begin
     if (c0'event and c0 = '1') then
-      if (ADACDiv(2 downto 0) = "000") then --BICK
+      if (ADACDiv(2 downto 0) = "000") then --dac_bck
         if (ADACDiv(6 downto 3) = "0000") then
           if ADACDiv(7) = '0' then
             ABDAC <= L_AOUT;
@@ -2001,9 +2000,8 @@ begin
       end if;
     end if;
   end process;  
-  SDATA <= ABDAC(15);
-  IC_n <= pSltRst_n;
-  CKS <= '0';
+  dac_din <= ABDAC(15);
+
 ----------------------------------------------------------------
 -- EEPROM Output
 ----------------------------------------------------------------
@@ -2088,7 +2086,7 @@ begin
   pSltRst_n <= pSltRst1_n when RstEN = '1'
           else '0';
 
-process (pSltClk_n,pSltRst1_n)
+process (pSltRst1_n,pSltSltsls_n)
 begin
   if pSltRst1_n = '0' then RstEN <= '0';
 --  if pSltRst1_n = '0' then pSltRst_n <= '0';
@@ -2105,7 +2103,7 @@ end process;
 --  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
 --  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
 --  SDOpo <='0' when pSltIorq_n = '0' and pSltWr_n = '0'and pSltAdr(7 downto 0) = "10100001" else 'Z'; --#A0
-  SDOpo <= pSltRst_n; --not KC; 
+--  SDOpo <= pSltRst_n; --not KC; 
 -- Current Slot detector
 process(pSltClk_n, DecMCARD, pSltAdr)
 begin
