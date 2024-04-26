@@ -187,9 +187,9 @@ Boot:
 	ld	de,DefCfg	; DefConfig values
 	ld	bc,24
 BootL:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare DefConfig to current registers
-	ex	hl,de
+	ex	de,hl
 	cpi
 	jr	nz,Boot0
 	inc	de
@@ -238,10 +238,10 @@ Title:
 	ld	b,6
 	ld	de,#0A09
 Titlel1:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	call	print_sp	; print title lines
 	djnz	Titlel1
 
@@ -266,7 +266,7 @@ FirmVn:
 	ld	a,"#"		; print unknown verison of firmware
 FirmVo:
 	push	af
-	ex	hl,de
+	ex	de,hl
 	ld	a,h
 	cp	#1A
 	jr	nz,FirmVs
@@ -274,7 +274,7 @@ FirmVo:
 FirmVs:
 	call	POSIT
 	inc	h
-	ex	hl,de
+	ex	de,hl
 	inc	hl
 	pop	af
 	call	CHPUT_VDP	; firmware version digit
@@ -2463,6 +2463,7 @@ DefCfg
 ; CARTRIDGE REGISTERS AREA, DON'T USE!
 ;	
 
+	block #4F80 - $
 	org	#4F80
 
 REGS:	ds	128
@@ -2475,6 +2476,7 @@ REGS:	ds	128
 ; The extra code and data area must start above the control registers (#4F80-#4FFF)!
 ;	
 
+	block #5000 - $
 	org	#5000
 
 
@@ -2658,7 +2660,7 @@ InitTitleL:
 	pop	hl
 	ld	de,8
 	add	hl,de
-	ex	hl,de
+	ex	de,hl
 	djnz	InitTitleL
 
 	ld	hl,#0F0A
@@ -2724,7 +2726,7 @@ AnimLoop1:
 	djnz	AnimLoop1
 	ld	hl,8
 	add	hl,de
-	ex	hl,de
+	ex	de,hl
 	ld	hl,SORTBUF+7
 	ld	b,8
 	exx
@@ -2781,7 +2783,7 @@ AnimLoop1:
 	djnz	AnimLoop1
 	ld	hl,8
 	add	hl,de
-	ex	hl,de
+	ex	de,hl
 	ld	hl,SORTBUF
 	ld	b,8
 	exx
@@ -2823,9 +2825,9 @@ DoScroll:
 DoScrLoop:
 	sla	(hl)		; shift left with carry
 	jr	nc,DoScrL1
-	ex	hl,de
+	ex	de,hl
 	set	2,(hl)		; move bit to previous character
-	ex	hl,de
+	ex	de,hl
 DoScrL1:
 	inc	hl
 	inc	de
@@ -2982,7 +2984,7 @@ ScrollI1:
 	ld	(SCRTXT),hl	; address of the text for scroller + 31 symbol
 	pop	hl
 	ld	de,ScrollerS
-	ex	hl,de
+	ex	de,hl
 	ld	bc,ScrollerE-ScrollerS
 	ldir			; copy scroller text to RAM
 	ld	hl,ScrollerS
@@ -3006,9 +3008,9 @@ ScrollLoop:
 	call	LDIRMV		; copy data for 8 symbols from VRAM
 	pop	de
 	ld	hl,8
-	ex	hl,de
+	ex	de,hl
 	add	hl,de		; next symbol's address
-	ex	hl,de
+	ex	de,hl
 	pop	hl
 	inc	hl
 	pop	bc
@@ -3641,9 +3643,9 @@ NetDetectL:
 	ld	de,SORTBUF
 	ld	bc,8
 NetDetectA:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare KYBT1 pattern
-	ex	hl,de
+	ex	de,hl
 	cpi
 	jr	nz,NetDetectB
 	inc	de
@@ -3657,9 +3659,9 @@ NetDetectB:
 	ld	de,SORTBUF
 	ld	bc,8
 NetDetectC:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare KYBT2 pattern
-	ex	hl,de
+	ex	de,hl
 	cpi
 	ret	nz
 	inc	de
@@ -3701,9 +3703,9 @@ LocDetectL:
 	ld	de,SORTBUF
 	ld	bc,16
 LocDetectA:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare Arabic pattern to font
-	ex	hl,de
+	ex	de,hl
 	cpi
 	jr	nz,LocDetectB
 	inc	de
@@ -3718,9 +3720,9 @@ LocDetectB:
 	ld	de,SORTBUF
 	ld	bc,16
 LocDetectC:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare Korean pattern to font
-	ex	hl,de
+	ex	de,hl
 	cpi
 	ret	nz
 	inc	de
@@ -4569,10 +4571,10 @@ SSetup21:
 	ld	b,3
 	ld	de,#060C
 SSLoop0:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	ld	hl,Subempt
 	call	print		; print empty lines of master slot
 	djnz	SSLoop0
@@ -4594,10 +4596,10 @@ SSLoop00:
 	ld	b,4
 	ld	de,#060B
 SSLoop1:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	ld	hl,Subslot
 	call	print		; print subslots of master slot
 	djnz	SSLoop1
@@ -4721,10 +4723,10 @@ SSetup31:
 	ld	b,3
 	ld	de,#0612
 SSLoop3:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	ld	hl,Subempt
 	call	print		; print empty lines of slave slot
 	djnz	SSLoop3
@@ -4754,16 +4756,16 @@ SSLoop33:
 	ld	bc,#0430
 	ld	de,#0611
 SSLoop2:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
-	ex	hl,de
+	ex	de,hl
 	ld	hl,Subslot
 	call	print		; print subslots of slave slot
-	ex	hl,de
+	ex	de,hl
 	ld	h,#0f
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	ld	a,c
 	call	CHPUT_VDP
 	inc	c
@@ -5273,10 +5275,10 @@ Slt_Val40:
 	ld	b,4
 	ld	de,#0611
 SSLoop4:
-	ex	hl,de
+	ex	de,hl
 	call    POSIT
 	inc	l
-	ex	hl,de
+	ex	de,hl
 	ld	hl,Subempt
 	call	print		; print empty lines of slave slot
 	djnz	SSLoop4
@@ -8232,9 +8234,9 @@ DualReset:
 	ld	de,Label	; boot menu label
 	ld	bc,8
 DualRL:
-	ex	hl,de
+	ex	de,hl
 	ld	a,(hl)		; Compare RAM to C2's label
-	ex	hl,de
+	ex	de,hl
 	cpi
 	jr	nz,DualRR
 	inc	de
@@ -8933,6 +8935,7 @@ PSGINI	equ	PSGINI_E
 ; EXTRA DATA AREA for one-time use, will be loaded from 7th 8kb block from FlashROM
 ;	
 
+	block #8000 - $
 	org	#8000
 
 ; Title screen
@@ -8958,7 +8961,7 @@ TitleScr:
 	db	#8E,#FF,19,#8B,#89,0
 
 TitleScrl
-	db 	"C"+#80,"A"+#80,"R"+#80,"N"+#80,"I"+#80,"V"+#80,"O"+#80,"R"+#80,"E"+#80,#DC
+	db 	("C"+#80),("A"+#80),("R"+#80),("N"+#80),("I"+#80),("V"+#80),("O"+#80),("R"+#80),("E"+#80),#DC
 TitleRepl
 	db	#E0,#E1,#E2,#E3,#E4,#E5,#E6,#E7,#E8,#97,#E9,0
 InvSpace
@@ -9241,24 +9244,24 @@ DynamicS
 ; Scroller text
 ScrollerS
 	db	"                               "
-	db	#A7,"S"+#80,#0F," toggles this help scroller ",#1A," "
-	db	#A7,"H"+#80,#0F," shows help screens ",#1A," "
-	db	#A7,"E"+#80,"S"+#80,"C"+#80,#0F," exits and boots with default configuration ",#1A," "
-	db	#A7,"L"+#80,"E"+#80,"F"+#80,"T"+#80,#0F," or ",#A7,"R"+#80,"I"+#80,"G"+#80,"H"+#80,"T"+#80,#0F," flips directory pages ",#1A," "
-	db	#A7,"U"+#80,"P"+#80,#0F," or ",#A7,"D"+#80,"O"+#80,"W"+#80,"N"+#80,#0F," selects ROM or CFG entry ",#1A," "
-	db	#A7,"S"+#80,"P"+#80,"A"+#80,"C"+#80,"E"+#80,#0F," starts selected entry (single slot) ",#1A," "
-	db	#A7,"G"+#80,#0F," starts selected entry directly ",#1A," "
-	db	#A7,"R"+#80,#0F," resets MSX and starts selected entry ",#1A," "
-	db	#A7,"E"+#80,"N"+#80,"T"+#80,"E"+#80,"R"+#80,#0F," or ",#A7,"O"+#80,#0F," opens Dual-Slot setup page ",#1A," "
+	db	#A7,("S"+#80),#0F," toggles this help scroller ",#1A," "
+	db	#A7,("H"+#80),#0F," shows help screens ",#1A," "
+	db	#A7,("E"+#80),("S"+#80),("C"+#80),#0F," exits and boots with default configuration ",#1A," "
+	db	#A7,("L"+#80),("E"+#80),("F"+#80),("T"+#80),#0F," or ",#A7,("R"+#80),("I"+#80),("G"+#80),("H"+#80),("T"+#80),#0F," flips directory pages ",#1A," "
+	db	#A7,("U"+#80),("P"+#80),#0F," or ",#A7,("D"+#80),("O"+#80),("W"+#80),("N"+#80),#0F," selects ROM or CFG entry ",#1A," "
+	db	#A7,("S"+#80),("P"+#80),("A"+#80),("C"+#80),("E"+#80),#0F," starts selected entry (single slot) ",#1A," "
+	db	#A7,("G"+#80),#0F," starts selected entry directly ",#1A," "
+	db	#A7,("R"+#80),#0F," resets MSX and starts selected entry ",#1A," "
+	db	#A7,("E"+#80),("N"+#80),("T"+#80),("E"+#80),("R"+#80),#0F," or ",#A7,("O"+#80),#0F," opens Dual-Slot setup page ",#1A," "
 	db	#A7,#DB,#0F," selects entry for master slot ",#1A," "	; 1
 	db	#A7,#DC,#0F," selects entry for slave slot ",#1A," "	; 2
-	db	#A7,"A"+#80,#0F," selects entry for Auto-Start ",#1A," "
-	db	#A7,"D"+#80,#0F," clears Auto-Start and Dual-Slot settings ",#1A," "
-	db	#A7,"F"+#80,#0F," sets 50Hz or 60Hz frequency ",#1A," "
-	db	#A7,"T"+#80,#0F," toggles Turbo or R800 mode ",#1A," "
-	db	#A7,"C"+#80,#0F," opens cartridge's configuration page ",#1A," "
-	db	#A7,"L"+#80,#0F," jumps to the last used entry ",#1A," "
-	db	#A7,"M"+#80,#0F," toggles background music "
+	db	#A7,("A"+#80),#0F," selects entry for Auto-Start ",#1A," "
+	db	#A7,("D"+#80),#0F," clears Auto-Start and Dual-Slot settings ",#1A," "
+	db	#A7,("F"+#80),#0F," sets 50Hz or 60Hz frequency ",#1A," "
+	db	#A7,("T"+#80),#0F," toggles Turbo or R800 mode ",#1A," "
+	db	#A7,("C"+#80),#0F," opens cartridge's configuration page ",#1A," "
+	db	#A7,("L"+#80),#0F," jumps to the last used entry ",#1A," "
+	db	#A7,("M"+#80),#0F," toggles background music "
 	db	0,0,0,0,0,0,0,0,0
 ScrollerE
 
