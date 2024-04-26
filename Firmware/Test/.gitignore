@@ -1,0 +1,15 @@
+/db/
+/incremental_db/
+/*.done
+/*.rpt
+/*.smsg
+/*.summary
+/*.qws
+/*.sof
+/*.pof
+/*.cdf
+/*.pin
+/*.jdi
+
+*.bak
+greybox_tmp/
