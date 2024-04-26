@@ -10,17 +10,17 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
+	include	"flash.inc"
 
 ;--- Macro for printing a $-terminated string
 
-print	macro	
+	macro print msg
 	push	ix
-	ld	de,\1
+	ld	de,msg
 	ld	c,_STROUT
 	call	DOS
 	pop	ix
 	endm
-
 
 ;--- System calls and variables
 
@@ -226,6 +226,9 @@ Stfp011:
 	print	M_Wnvc
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
+	cp	"y"
+	jr	z,Stfp30
 	jp	Exit
 
 Stfp30:
@@ -1473,25 +1476,24 @@ FBProg2:
         ld      h,#80
         call    ENASLT 
 	ld	hl,#8AAA
-;	ld	de,#8555
+	ld	de,#8555
 	exx
 	ld	de,#8000
 	di
 Loop2:
 	exx
-	ld	(hl),#50		; double byte programm
+	ld	(hl),#AA		; (AAA)<-AA
+	ld	a,#55		
+	ld	(de),a			; (555)<-55
+	ld	(hl),#A0		; (AAA)<-A0
 	exx
 	ld	a,(hl)
-	ld	(de),a			; 1st byte programm
-	inc	hl
-	inc	de
-	ld	a,(hl)			; 2nd byte programm
-	ld	(de),a
+	ld	(de),a			; byte programm
+
 	call	CHECK			; check
 	jp	c,PrEr
 	inc	hl
 	inc	de
-	dec	bc
 	dec	bc
 	ld	a,b
 	or	c
@@ -1853,29 +1855,29 @@ Trp02:	call	HEXOUT
 	print	ONE_NL_S
 
 Trp02a:	ld	a,(Det00)
-	cp	#20
+	cp	Det00cp
 	jp	nz,Trp03	
 	ld	a,(Det02)
-	cp	#7E
+	cp	Det02cp
 	jp	nz,Trp03
 	print	M29W640
 	ld	e,"x"
 	ld	a,(Det1C)
-	cp	#0C
+	cp	Det1Cc1
 	jr	z,Trp05
-	cp	#10
+	cp	Det1Cc2
 	jr	z,Trp08
 	jr	Trp04
 Trp05:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp06
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp07
 	jr	Trp04
 Trp08:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp09
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp10
 	jr	Trp04
 Trp06:	ld	e,"H"
@@ -2937,8 +2939,8 @@ Findcrt_S:
 M_Wnvc:
 	db	10,13,"WARNING!",10,13
 	db	"Uninitialized cartridge or wrong version of Carnivore cartridge found!",10,13
-	db	"Only Carnivore2 cartridge is supported. The program will now exit.",10,13
-	db	"Press any key...",10,13,"$"
+	db	"Using this utility with the wrong cartridge version may damage data on it!",10,13
+	db	"Proceed only if you have an unitialized Carnivore2 cartridge. Continue? (y/n)",10,13,"$"
 FindcrI_S:
 	db	13,10,"Press ENTER for the found slot or input new slot number - $"
 

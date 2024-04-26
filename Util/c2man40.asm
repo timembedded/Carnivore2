@@ -16,20 +16,20 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
+	include	"flash.inc"
 
 ;--- Macro for printing a $-terminated string and 1 symbol
 
-print	macro	
+	macro print msg
 	push	de	
-	ld	de,\1
+	ld	de,msg
 	call	PrintMsg
 	pop	de
 	endm
 
-prints	macro
+	macro prints
 	call	PrintSym
 	endm
-
 
 ;--- System calls and variables
 
@@ -1399,7 +1399,7 @@ DTME22:
 	ld	b,a
 	call	TTAB
 	inc	hl
-	ex	hl,de			; print selected MAP
+	ex	de,hl			; print selected MAP
 	call	PrintMsg
 	print	ONE_NL_S
 
@@ -1449,7 +1449,7 @@ MTC2:	ld	(DMAPt),a		; print all tab MAP
 	call	PrintSym
 	pop	hl
 	inc	hl
-	ex	hl,de
+	ex	de,hl
 	call	PrintMsg
 	print	ONE_NL_S
 	ld	a,(DMAPt)
@@ -2453,25 +2453,24 @@ FBProg2:
         ld      h,#80
         call    ENASLT 
 	ld	hl,#8AAA
-;	ld	de,#8555
+	ld	de,#8555
 	exx
 	ld	de,#8000
 	di
 Loop2:
 	exx
-	ld	(hl),#50		; double byte programm
+	ld	(hl),#AA		; (AAA)<-AA
+	ld	a,#55		
+	ld	(de),a			; (555)<-55
+	ld	(hl),#A0		; (AAA)<-A0
 	exx
 	ld	a,(hl)
-	ld	(de),a			; 1st byte programm
-	inc	hl
-	inc	de
-	ld	a,(hl)			; 2nd byte programm
-	ld	(de),a
+	ld	(de),a			; byte programm
+
 	call	CHECK			; check
 	jp	c,PrEr
 	inc	hl
 	inc	de
-	dec	bc
 	dec	bc
 	ld	a,b
 	or	c
@@ -4121,9 +4120,9 @@ rdt03:					; descriptor
 	call	PrintSym
 	jr	rdt04
 rdt06:					; text element
-	ex	hl,de
+	ex	de,hl
 	call	PrintMsg
-	ex	hl,de
+	ex	de,hl
 rdt04:
 	ld	a,(iy+5)		; next element
 	ld	e,a
@@ -4544,10 +4543,10 @@ rdt20:
 rdt21:	
 	ld	(CSRY),hl
 	call	PRDE			; print 5 type
-	ex	hl,de
+	ex	de,hl
 	ld	bc,#40
 	add	hl,bc
-	ex	hl,de
+	ex	de,hl
 	inc	l
 	ld	a,l
 	cp	3+6
@@ -6608,29 +6607,29 @@ Trp02:	call	HEXOUT
 	print	ONE_NL_S
 
 Trp02a:	ld	a,(Det00)
-	cp	#20
+	cp	Det00cp
 	jp	nz,Trp03	
 	ld	a,(Det02)
-	cp	#7E
+	cp	Det02cp
 	jp	nz,Trp03
 	print	M29W640			; print base model number M29W640G
 	ld	e,"x"
 	ld	a,(Det1C)
-	cp	#0C
+	cp	Det1Cc1
 	jr	z,Trp05
-	cp	#10
+	cp	Det1Cc2
 	jr	z,Trp08
 	jr	Trp04			; M29W640Gx
 Trp05:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp06
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp07
 	jr	Trp04
 Trp08:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp09
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp10
 	jr	Trp04
 Trp06:	ld	e,"H"			; M29W640GH
@@ -7573,6 +7572,7 @@ GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
 
 ;------------------------------------------------------------------------------
 
+	block #4000 - $
 	org	#4000
 
 BUFTOP:
@@ -7584,6 +7584,7 @@ BUFTOP:
 ; Extra area for single-use code and data
 ;
 
+	block #8000 - $
 	org	#8000
 
 ; Command line messages
@@ -7943,6 +7944,7 @@ DetVDPE:
 ; Extra data area from #8000 due to lack of code space before control registers.
 ; Warning! This area may become re-used, so only use data that is needed only once at the startup!
 ;
+	block #C000 - $
 	org	#C000
 
 ;

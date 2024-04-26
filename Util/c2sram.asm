@@ -10,15 +10,15 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
+	include	"flash.inc"
 
 ;--- Macro for printing a $-terminated string
 
-print	macro	
-	ld	de,\1
+	macro print msg
+	ld	de,msg
 	ld	c,_STROUT
 	call	DOS
 	endm
-
 
 ;--- System calls and variables
 
@@ -1382,29 +1382,29 @@ Trp02:	call	HEXOUT
 	print	ONE_NL_S
 
 Trp02a:	ld	a,(Det00)
-	cp	#20
+	cp	Det00cp
 	jr	nz,Trp03	
 	ld	a,(Det02)
-	cp	#7E
+	cp	Det02cp
 	jr	nz,Trp03
 	print	M29W640
 	ld	e,"x"
 	ld	a,(Det1C)
-	cp	#0C
+	cp	Det1Cc1
 	jr	z,Trp05
-	cp	#10
+	cp	Det1Cc2
 	jr	z,Trp08
 	jr	Trp04
 Trp05:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp06
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp07
 	jr	Trp04
 Trp08:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp09
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp10
 	jr	Trp04
 Trp06:	ld	e,"H"

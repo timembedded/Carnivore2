@@ -13,8 +13,8 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 
 ;--- Macro for printing a $-terminated string
 
-print	macro	
-	ld	de,\1
+	macro print msg
+	ld	de,msg
 	ld	c,_STROUT
 	call	DOS
 	endm
@@ -135,7 +135,7 @@ TSTSTART:
 	dec	a
 	ld	l,a
 	ld	h,0
-	ex	hl,de
+	ex	de,hl
 	ld	a,%00001000
 	ld	bc,#0200
 	call	NUMTOASC		; convert to string
@@ -155,7 +155,7 @@ TSTLOOP:
 	print	ITERM
 	ld	de,BUFFER
 	ld	hl,(ITERAT)
-	ex	hl,de
+	ex	de,hl
 	ld	a,%00001000
 	ld	c,'0'
 	ld	b,2
@@ -351,7 +351,7 @@ Exit:
 	ld	hl,(ITERAT)
 	dec	hl
 	ld	de,BUFFER
-	ex	hl,de
+	ex	de,hl
 	ld	a,%00001000
 	ld	c,'0'
 	ld	b,2
@@ -361,7 +361,7 @@ Exit:
 	print	RESULT2
 	ld	hl,(PASS)
 	ld	de,BUFFER
-	ex	hl,de
+	ex	de,hl
 	ld	a,%00001000
 	ld	c,'0'
 	ld	b,2
@@ -371,7 +371,7 @@ Exit:
 	print	RESULT3
 	ld	hl,(FAIL)
 	ld	de,BUFFER
-	ex	hl,de
+	ex	de,hl
 	ld	a,%00001000
 	ld	c,'0'
 	ld	b,2

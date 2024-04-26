@@ -16,20 +16,20 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
+	include	"flash.inc"
 
 ;--- Macro for printing a $-terminated string and 1 symbol
 
-print	macro	
+	macro print msg
 	push	de	
-	ld	de,\1
+	ld	de,msg
 	call	PrintMsg
 	pop	de
 	endm
 
-prints	macro
+	macro	prints
 	call	PrintSym
 	endm
-
 
 ;--- System calls and variables
 
@@ -1399,7 +1399,7 @@ DTME22:
 	ld	b,a
 	call	TTAB
 	inc	hl
-	ex	hl,de			; print selected MAP
+	ex	de,hl			; print selected MAP
 	call	PrintMsg
 	print	ONE_NL_S
 
@@ -1449,7 +1449,7 @@ MTC2:	ld	(DMAPt),a		; print all tab MAP
 	call	PrintSym
 	pop	hl
 	inc	hl
-	ex	hl,de
+	ex	de,hl
 	call	PrintMsg
 	print	ONE_NL_S
 	ld	a,(DMAPt)
@@ -2431,25 +2431,24 @@ FBProg2:
         ld      h,#80
         call    ENASLT 
 	ld	hl,#8AAA
-;	ld	de,#8555
+	ld	de,#8555
 	exx
 	ld	de,#8000
 	di
 Loop2:
 	exx
-	ld	(hl),#50		; double byte programm
+	ld	(hl),#AA		; (AAA)<-AA
+	ld	a,#55		
+	ld	(de),a			; (555)<-55
+	ld	(hl),#A0		; (AAA)<-A0
 	exx
 	ld	a,(hl)
-	ld	(de),a			; 1st byte programm
-	inc	hl
-	inc	de
-	ld	a,(hl)			; 2nd byte programm
-	ld	(de),a
+	ld	(de),a			; byte programm
+
 	call	CHECK			; check
 	jp	c,PrEr
 	inc	hl
 	inc	de
-	dec	bc
 	dec	bc
 	ld	a,b
 	or	c
@@ -3371,13 +3370,15 @@ UT01:
 	cp	"3"
 	jp	z,DIRINI
 	cp	"4"
-	jp	z,BootINI
+	jp	z,BootINI1
 	cp	"5"
 	jp	z,IDE_INI
 	cp	"6"
 	jp	z,FMPAC_INI
 	cp	"7"
 	jp	z,ChipErase
+	cp	"8"
+	jp	z,BootINI2
 	cp	27
 	jp	z,MainM
 	cp	"0"
@@ -4140,6 +4141,16 @@ Ifop1:
 	jr	Ifop0a
 
 
+BootINI1:
+	xor	a
+	ld	(SkpEra),a
+	jr	BootINI
+
+BootINI2:
+	ld	a,1
+	ld	(SkpEra),a
+	jr	BootINI
+
 BootINI:
 	print	Boot_I_S
 	call	QFYN
@@ -4197,6 +4208,9 @@ Boot04:
 Boot05:
 ;Erase boot menu		
 	print	BootWrit
+	ld	a,(SkpEra)
+	or	a
+	jr	nz,Boot05a
 	xor	a
 	ld	(EBlock),a
 	ld	a,#00			; 1st boot menu block
@@ -4211,6 +4225,7 @@ Boot05:
 	ld	a,#E0			; 4th boot menu block
 	ld	(EBlock0),a
 	call	FBerase	
+Boot05a:
 
 ;Program 1st 8kb and DefConfig
 	call	SET2PD
@@ -5181,29 +5196,29 @@ Trp02:	call	HEXOUT
 	print	ONE_NL_S
 
 Trp02a:	ld	a,(Det00)
-	cp	#20
+	cp	Det00cp
 	jp	nz,Trp03	
 	ld	a,(Det02)
-	cp	#7E
+	cp	Det02cp
 	jp	nz,Trp03
 	print	M29W640			; print base model number M29W640G
 	ld	e,"x"
 	ld	a,(Det1C)
-	cp	#0C
+	cp	Det1Cc1
 	jr	z,Trp05
-	cp	#10
+	cp	Det1Cc2
 	jr	z,Trp08
 	jr	Trp04			; M29W640Gx
 Trp05:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp06
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp07
 	jr	Trp04
 Trp08:	ld	a,(Det1E)
-	cp	#01
+	cp	Det1Ec1
 	jr	z,Trp09
-	cp	#00
+	cp	Det1Ec2
 	jr	z,Trp10
 	jr	Trp04
 Trp06:	ld	e,"H"			; M29W640GH
@@ -5264,6 +5279,7 @@ UTIL_S:	db	13,10
 	db      " 5 - Write IDE ROM BIOS (bidecmfc.bin)",13,10
 	db	" 6 - Write FMPAC ROM BIOS (fmpccmfc.bin)",13,10
 	db	" 7 - Fully erase FlashROM chip",13,10
+	db	" 8 - Write Boot Menu without erase (repair)",13,10
 	db	" 0 - Return to main menu [ESC]",13,10,"$"
 
 
@@ -5542,6 +5558,8 @@ p1e	db	0
 
 ZeroB:	db	0
 
+SkpEra:	db	0
+
 Space:
 	db	" $"
 Bracket:
@@ -5806,6 +5824,7 @@ EXIT_S:	db	10,13,"Thanks for using RBSC's products!",13,10,"$"
 
 ;------------------------------------------------------------------------------
 
+	block #4000 - $
 	org	#4000
 
 BUFTOP:
@@ -5817,6 +5836,7 @@ BUFTOP:
 ; Extra area for single-use code and data
 ;
 
+	block #8000 - $
 	org	#8000
 
 ; Command line messages
