@@ -45,7 +45,8 @@ architecture RTL of fmpac is
   signal read_state_x, read_state_r : read_state_t;
   signal read_waitrequest_i : std_logic;
 
-  signal mes_fmpac_read_d1 : std_logic;
+  signal mes_fmpac_readdatavalid_r, mes_fmpac_readdatavalid_x : std_logic;
+  signal mes_fmpac_readdata_r, mes_fmpac_readdata_x           : std_logic_vector(7 downto 0);
 
   signal pYM2413_CS : std_logic;
   signal pYM2413_A  : std_logic;
@@ -138,14 +139,14 @@ begin
 
   process(clock, slot_reset)
   begin
-    if(slot_reset = '1') then
-      R7FF6b0 <= '0' ;
-      R7FF6b4 <= '1' ;
-      R7FF7 <= "00" ;
-      R5FFE <= "00000000" ;
-      R5FFF <= "00000000" ;
-    elsif rising_edge(clock) then
-      if (mes_fmpac_write = '1') then
+    if rising_edge(clock) then
+      if (slot_reset = '1') then
+        R7FF6b0 <= '0' ;
+        R7FF6b4 <= '1' ;
+        R7FF7 <= "00" ;
+        R5FFE <= "00000000" ;
+        R5FFF <= "00000000" ;
+      elsif (mes_fmpac_write = '1') then
         if (mes_fmpac_address = "11"&"1111"&"1111"&"0110") then
           R7FF6b0 <= mes_fmpac_writedata(0);
           R7FF6b4 <= mes_fmpac_writedata(4);
@@ -169,7 +170,6 @@ begin
 
   rom_fmpac_address <= mes_fmpac_address;
 
-  mes_fmpac_read_d1 <= mes_fmpac_read when rising_edge(clock);
   mes_fmpac_waitrequest <= read_waitrequest_i or ym2413_waitrequest_i;
 
   process(all)
@@ -177,34 +177,39 @@ begin
     read_waitrequest_i <= '1';
     read_state_x <= read_state_r;
     rom_fmpac_read <= '0';
+    mes_fmpac_readdata_x <= (others => '0');
+    mes_fmpac_readdatavalid_x <= '0';
 
     case (read_state_r) is
       when RS_IDLE =>
-        -- Default latency is one clock
-        mes_fmpac_readdatavalid <= mes_fmpac_read_d1;
-        mes_fmpac_readdata <= (others => '-');
+        -- Accept tarnsfers in this state
         read_waitrequest_i <= '0';
+
+        mes_fmpac_readdatavalid <= mes_fmpac_readdatavalid_r;
+        mes_fmpac_readdata <= mes_fmpac_readdata_r;
 
         -- Decode requests
         if (mes_fmpac_address = "11"&"1111"&"1111"&"0110") then
           -- Register 7FF6
-          mes_fmpac_readdata <= "000" & R7FF6b4 & "000" & R7FF6b0;
+          mes_fmpac_readdatavalid_x <= '1';
+          mes_fmpac_readdata_x <= "000" & R7FF6b4 & "000" & R7FF6b0;
         elsif (mes_fmpac_address = "11"&"1111"&"1111"&"0111") then
           -- Register 7FF7
-          mes_fmpac_readdata <= "000000" & R7FF7;
+          mes_fmpac_readdatavalid_x <= '1';
+          mes_fmpac_readdata_x <= "000000" & R7FF7;
         elsif (mes_fmpac_address = "01"&"1111"&"1111"&"1110") then
           -- Register 7FFE
-          mes_fmpac_readdata <= R5FFE;
+          mes_fmpac_readdatavalid_x <= '1';
+          mes_fmpac_readdata_x <= R5FFE;
         elsif (mes_fmpac_address = "01"&"1111"&"1111"&"1111") then
           -- Register 7FFF
-          mes_fmpac_readdata <= R5FFF;
+          mes_fmpac_readdatavalid_x <= '1';
+          mes_fmpac_readdata_x <= R5FFF;
         elsif (CsRAM8k = '1' and mes_fmpac_read = '1') then
           -- SRAM
-          mes_fmpac_readdatavalid <= '0';
           read_state_x <= RS_SRAM;
         elsif (mes_fmpac_read = '1') then
           -- ROM
-          mes_fmpac_readdatavalid <= '0';
           rom_fmpac_read <= '1';
           if (rom_fmpac_waitrequest = '1') then
             read_waitrequest_i <= '1';
@@ -237,9 +242,12 @@ begin
     if rising_edge(clock) then
       if slot_reset = '1' then
         read_state_r <= RS_IDLE;
+        mes_fmpac_readdatavalid_r <= '0';
       else
         read_state_r <= read_state_x;
+        mes_fmpac_readdatavalid_r <= mes_fmpac_readdatavalid_x;
       end if;
+      mes_fmpac_readdata_r <= mes_fmpac_readdata_x;
     end if;
   end process;
 

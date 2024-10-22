@@ -155,6 +155,21 @@ architecture rtl of top is
   signal rom_fmpac_readdatavalid_i  : std_logic;
   signal rom_fmpac_waitrequest_i    : std_logic;
 
+  -- Avalon bus: IDE
+  signal mem_ide_read_i             : std_logic;
+  signal mem_ide_write_i            : std_logic;
+  signal mem_ide_address_i          : std_logic_vector(13 downto 0);
+  signal mem_ide_writedata_i        : std_logic_vector(7 downto 0);
+  signal mem_ide_readdata_i         : std_logic_vector(7 downto 0);
+  signal mem_ide_readdatavalid_i    : std_logic;
+  signal mem_ide_waitrequest_i      : std_logic;
+  -- ROM
+  signal rom_ide_read_i             : std_logic;
+  signal rom_ide_address_i          : std_logic_vector(16 downto 0);
+  signal rom_ide_readdata_i         : std_logic_vector(7 downto 0);
+  signal rom_ide_readdatavalid_i    : std_logic;
+  signal rom_ide_waitrequest_i      : std_logic;
+
   -- Audio
   signal audio_output_left_i : std_logic_vector(15 downto 0);
   signal audio_output_right_i : std_logic_vector(15 downto 0);
@@ -182,16 +197,6 @@ begin
   EECS <= '1';
   EECK <= '0';
   EEDI <= '0';
-
-  -- IDE
-  pIDEAdr     <= (others => '0');
-  pIDEDat     <= (others => 'Z');
-  pIDECS1_n   <= '1';
-  pIDECS3_n   <= '1';
-  pIDERD_n    <= '1';
-  pIDEWR_n    <= '1';
-  pPIN180     <= '0';
-  pIDE_Rst_n  <= '0';
 
   -- Debug
   J2_2 <= count(0);
@@ -309,11 +314,11 @@ begin
     mes_fmpac_waitrequest     => rom_fmpac_waitrequest_i,
 
     -- IDE ROM
-    mes_ide_read              => '0',
-    mes_ide_address           => (others => '0'),
-    mes_ide_readdata          => open,
-    mes_ide_readdatavalid     => open,
-    mes_ide_waitrequest       => open
+    mes_ide_read              => rom_ide_read_i,
+    mes_ide_address           => rom_ide_address_i,
+    mes_ide_readdata          => rom_ide_readdata_i,
+    mes_ide_readdatavalid     => rom_ide_readdatavalid_i,
+    mes_ide_waitrequest       => rom_ide_waitrequest_i
   );
 
   --------------------------------------------------------------------
@@ -369,7 +374,7 @@ begin
   i_address_decoding : entity work.address_decoding(rtl)
   port map
   (
-    -- clock and reset
+    -- Clock and reset
     clock             => sysclk,
     slot_reset        => slot_reset_i,
 
@@ -405,7 +410,16 @@ begin
     iom_fmpac_write          => iom_fmpac_write_i,
     iom_fmpac_address        => iom_fmpac_address_i,
     iom_fmpac_writedata      => iom_fmpac_writedata_i,
-    iom_fmpac_waitrequest    => iom_fmpac_waitrequest_i
+    iom_fmpac_waitrequest    => iom_fmpac_waitrequest_i,
+
+    -- IDE
+    mem_ide_read             => mem_ide_read_i,
+    mem_ide_write            => mem_ide_write_i,
+    mem_ide_address          => mem_ide_address_i,
+    mem_ide_writedata        => mem_ide_writedata_i,
+    mem_ide_readdata         => mem_ide_readdata_i,
+    mem_ide_readdatavalid    => mem_ide_readdatavalid_i,
+    mem_ide_waitrequest      => mem_ide_waitrequest_i
   );
 
   ----------------------------------------------------------------
@@ -444,6 +458,44 @@ begin
     BCMO    => BCMO,
     BCRO    => BCRO,
     SDO     => open
+  );
+
+  ----------------------------------------------------------------
+  -- IDE
+  ----------------------------------------------------------------
+
+  i_ide : entity work.ide(rtl)
+  port map
+  (
+    -- clock and reset
+    clock                 => sysclk,
+    slot_reset            => slot_reset_i,
+
+    -- Avalon slave ports
+    mes_ide_read          => mem_ide_read_i,
+    mes_ide_write         => mem_ide_write_i,
+    mes_ide_address       => mem_ide_address_i,
+    mes_ide_writedata     => mem_ide_writedata_i,
+    mes_ide_readdata      => mem_ide_readdata_i,
+    mes_ide_readdatavalid => mem_ide_readdatavalid_i,
+    mes_ide_waitrequest   => mem_ide_waitrequest_i,
+
+    -- rom master port
+    rom_ide_read          => rom_ide_read_i,
+    rom_ide_address       => rom_ide_address_i,
+    rom_ide_readdata      => rom_ide_readdata_i,
+    rom_ide_readdatavalid => rom_ide_readdatavalid_i,
+    rom_ide_waitrequest   => rom_ide_waitrequest_i,
+
+    -- CF card interface
+    pIDEAdr               => pIDEAdr,
+    pIDEDat               => pIDEDat,
+    pIDECS1_n             => pIDECS1_n,
+    pIDECS3_n             => pIDECS3_n,
+    pIDERD_n              => pIDERD_n,
+    pIDEWR_n              => pIDEWR_n,
+    pPIN180               => pPIN180,
+    pIDE_Rst_n            => pIDE_Rst_n
   );
 
   ----------------------------------------------------------------

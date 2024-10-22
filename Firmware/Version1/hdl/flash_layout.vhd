@@ -55,20 +55,12 @@ begin
   mem_flash_writedata <= (others => '0');
 
   --------------------------------------------------------------------
-  -- Mux address
-  --------------------------------------------------------------------
-  mem_flash_address <=
-      "000"&"0011"&"00" & mes_fmpac_address when mes_fmpac_read = '1' else
-      "000"&"0001"& mes_ide_address(15 downto 0) when mes_ide_read = '1' and mes_ide_address(16) = '0' else
-      "000"&"0010"& mes_ide_address(15 downto 0) when mes_ide_read = '1' and mes_ide_address(16) = '1' else
-      (others => '-');
-
-  --------------------------------------------------------------------
   -- Select slave
   --------------------------------------------------------------------
   process(all)
   begin
     mem_flash_read <= '0';
+    mem_flash_address <= (others => '-');
     select_x <= select_r;
 
     mes_fmpac_waitrequest <= '1';
@@ -76,12 +68,20 @@ begin
 
     -- Select slave to read
     if (mes_fmpac_read = '1' and select_r = SEL_NONE and mem_flash_waitrequest = '0') then
+      -- FM-PAC
       select_x <= SEL_FMPAC;
       mem_flash_read <= '1';
+      mem_flash_address <= "000"&"0011"&"00" & mes_fmpac_address;
       mes_fmpac_waitrequest <= '0';
     elsif (mes_ide_read = '1' and select_r = SEL_NONE and mem_flash_waitrequest = '0') then
+      -- IDE
       select_x <= SEL_IDE;
       mem_flash_read <= '1';
+      if (mes_ide_address(16) = '0') then
+        mem_flash_address <= "000"&"0001"& mes_ide_address(15 downto 0);
+      else
+        mem_flash_address <= "000"&"0010"& mes_ide_address(15 downto 0);
+      end if;
       mes_ide_waitrequest <= '0';
     elsif (mem_flash_readdatavalid = '1') then
       select_x <= SEL_NONE;
@@ -94,7 +94,7 @@ begin
   process(clock)
   begin
     if rising_edge(clock) then
-      if slot_reset = '1' then
+      if (slot_reset = '1') then
         -- chipselect
         select_r <= SEL_NONE;
       else

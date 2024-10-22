@@ -73,7 +73,7 @@ architecture rtl of card_bus_slave is
   signal iowr_s, iowr_r                   : std_logic;
 
   -- Synchronous reset output
-  signal slot_reset_x, slot_reset_r       : std_logic;
+  signal slot_reset_n_x, slot_reset_n_r   : std_logic;
   signal slot_readdata_x, slot_readdata_r : std_logic_vector(8 downto 0);
 
   -- Avalon memory master
@@ -90,7 +90,7 @@ architecture rtl of card_bus_slave is
 
 begin
 
-  slot_reset <= slot_reset_r;
+  slot_reset <= not slot_reset_n_r;
 
   slt_wait_n <= 'Z';  -- For now never generate wait states
 
@@ -129,7 +129,7 @@ begin
   begin
     state_x <= state_r;
 
-    slot_reset_x <= '0';
+    slot_reset_n_x <= '1';
     slot_readdata_x <= slot_readdata_r;
 
     mem_read_x <= '0';
@@ -152,7 +152,7 @@ begin
 
     case (state_r) is
       when S_RESET =>
-        slot_reset_x <= '1';
+        slot_reset_n_x <= '0';
         if (slt_reset_n_r = '1') then
           state_x <= S_IDLE;
         end if;
@@ -262,7 +262,7 @@ begin
   begin
     if (reset = '1') then
       state_r <= S_RESET;
-      slot_reset_r <= '0';
+      slot_reset_n_r <= '0';
       slot_readdata_r(8) <= '0';
       mem_read_r <= '0';
       mem_write_r <= '0';
@@ -270,7 +270,7 @@ begin
       iom_write_r <= '0';
     elsif rising_edge(clock) then
       state_r <= state_x;
-      slot_reset_r <= slot_reset_x;
+      slot_reset_n_r <= slot_reset_n_x;
       slot_readdata_r(8) <= slot_readdata_x(8);
       mem_read_r <= mem_read_x;
       mem_write_r <= mem_write_x;

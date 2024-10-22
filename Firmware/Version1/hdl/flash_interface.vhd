@@ -55,7 +55,7 @@ architecture rtl of flash_interface is
 begin
 
   pFlDat <= flash_writedata_r when flash_output_enable_r = '1' else (others => 'Z');
-  pFlAdr <= "000" & "0011" & "00" & flash_address_r(13 downto 0);
+  pFlAdr <= flash_address_r;
   pFlCS_n <= not flash_chip_select_r;
   pFlOE_n <= not flash_read_r;
   pFlW_n <= not flash_write_r;
@@ -110,7 +110,6 @@ begin
           state_x <= S_READ;
         elsif (mes_flash_write = '1') then
           flash_chip_select_x <= '1';
-          flash_write_x <= '1';
           flash_output_enable_x <= '1';
           flash_address_x <= mes_flash_address;
           flash_writedata_x <= mes_flash_writedata;
@@ -154,18 +153,22 @@ begin
     if rising_edge(clock) then
       if (slot_reset = '1') then
         state_r <= S_IDLE;
+        flash_output_enable_r <= '0';
+        flash_chip_select_r <= '0';
+        flash_read_r <= '0';
+        flash_write_r <= '0';
       else
         state_r <= state_x;
+        flash_output_enable_r <= flash_output_enable_x;
+        flash_chip_select_r <= flash_chip_select_x;
+        flash_read_r <= flash_read_x;
+        flash_write_r <= flash_write_x;
       end if;
 
       delay_time_r <= delay_time_x;
 
       flash_address_r <= flash_address_x;
       flash_writedata_r <= flash_writedata_x;
-      flash_output_enable_r <= flash_output_enable_x;
-      flash_chip_select_r <= flash_chip_select_x;
-      flash_read_r <= flash_read_x;
-      flash_write_r <= flash_write_x;
 
       mes_latch_data_r <= mes_latch_data_x;
       mes_readdatavalid_r <= mes_readdatavalid_x;
