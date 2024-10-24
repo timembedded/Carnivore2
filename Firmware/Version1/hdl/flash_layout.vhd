@@ -39,53 +39,85 @@ end flash_layout;
 architecture rtl of flash_layout is
 
   -- chipselect
-  type select_t is (SEL_FMPAC, SEL_IDE, SEL_NONE);
-  signal select_r, select_x : select_t;
+  type mes_cs_t is (MES_CS_FMPAC, MES_CS_IDE, MES_CS_NONE);
+  signal mes_cs_i : mes_cs_t;
+  signal mes_cs_read_r, mes_cs_read_x : mes_cs_t;
 
 begin
 
-  mes_fmpac_readdata <= mem_flash_readdata;
-  mes_fmpac_readdatavalid <= '1' when mem_flash_readdatavalid = '1' and select_r = SEL_FMPAC else '0';
+  --------------------------------------------------------------------
+  -- Arbiter
+  --------------------------------------------------------------------
 
-  mes_ide_readdata <= mem_flash_readdata;
-  mes_ide_readdatavalid <= '1' when mem_flash_readdatavalid = '1' and select_r = SEL_IDE else '0';
-
-  -- At the moment nothing writes to flash
-  mem_flash_write <= '0';
-  mem_flash_writedata <= (others => '0');
+  arbiter : process(all)
+  begin
+    if (mes_fmpac_read = '1') then
+      -- FM-PAC
+      mes_cs_i <= MES_CS_FMPAC;
+    elsif (mes_ide_read = '1') then
+      -- IDE
+      mes_cs_i <= MES_CS_IDE;
+    else
+      mes_cs_i <= MES_CS_NONE;
+    end if;
+  end process;
 
   --------------------------------------------------------------------
-  -- Select slave
+  -- Read and write
   --------------------------------------------------------------------
-  process(all)
+  mem_read_write: process(all)
   begin
     mem_flash_read <= '0';
+    mem_flash_write <= '0';
+    mem_flash_writedata <= (others => '-');
     mem_flash_address <= (others => '-');
-    select_x <= select_r;
 
+    -- Read signal and waitrequest
     mes_fmpac_waitrequest <= '1';
     mes_ide_waitrequest <= '1';
+    case (mes_cs_i) is
+      when MES_CS_FMPAC =>
+        -- FM-PAC
+        mem_flash_read <= mes_fmpac_read;
+        mem_flash_address <= "000"&"0011"&"00" & mes_fmpac_address;
+        mes_fmpac_waitrequest <= mem_flash_waitrequest;
+      when MES_CS_IDE =>
+        -- IDE
+        mem_flash_read <= mes_ide_read;
+        if (mes_ide_address(16) = '0') then
+          mem_flash_address <= "000"&"0001"& mes_ide_address(15 downto 0);
+        else
+          mem_flash_address <= "000"&"0010"& mes_ide_address(15 downto 0);
+        end if;
+        mes_ide_waitrequest <= mem_flash_waitrequest;
+      when others =>
+    end case;
 
-    -- Select slave to read
-    if (mes_fmpac_read = '1' and select_r = SEL_NONE and mem_flash_waitrequest = '0') then
-      -- FM-PAC
-      select_x <= SEL_FMPAC;
-      mem_flash_read <= '1';
-      mem_flash_address <= "000"&"0011"&"00" & mes_fmpac_address;
-      mes_fmpac_waitrequest <= '0';
-    elsif (mes_ide_read = '1' and select_r = SEL_NONE and mem_flash_waitrequest = '0') then
-      -- IDE
-      select_x <= SEL_IDE;
-      mem_flash_read <= '1';
-      if (mes_ide_address(16) = '0') then
-        mem_flash_address <= "000"&"0001"& mes_ide_address(15 downto 0);
-      else
-        mem_flash_address <= "000"&"0010"& mes_ide_address(15 downto 0);
-      end if;
-      mes_ide_waitrequest <= '0';
+    -- Read chipselect state
+    if (mes_cs_i /= MES_CS_NONE and mem_flash_waitrequest = '0') then
+      mes_cs_read_x <= mes_cs_i;
     elsif (mem_flash_readdatavalid = '1') then
-      select_x <= SEL_NONE;
+      -- return data, can accept new transfer next clock
+      mes_cs_read_x <= MES_CS_NONE;
+    else
+      -- no active chipselect, keep current state
+      mes_cs_read_x <= mes_cs_read_r;
     end if;
+
+    -- Read de-multiplexer
+    mes_fmpac_readdata <= mem_flash_readdata;
+    mes_fmpac_readdatavalid <= '0';
+    mes_ide_readdata <= mem_flash_readdata;
+    mes_ide_readdatavalid <= '0';
+    case (mes_cs_read_r) is
+      when MES_CS_FMPAC =>
+        -- FM-PAC
+        mes_fmpac_readdatavalid <= mem_flash_readdatavalid;
+      when MES_CS_IDE =>
+        -- IDE
+        mes_ide_readdatavalid <= mem_flash_readdatavalid;
+      when others =>
+    end case;
   end process;
 
   --------------------------------------------------------------------
@@ -96,10 +128,10 @@ begin
     if rising_edge(clock) then
       if (slot_reset = '1') then
         -- chipselect
-        select_r <= SEL_NONE;
+        mes_cs_read_r <= MES_CS_NONE;
       else
         -- chipselect
-        select_r <= select_x;
+        mes_cs_read_r <= mes_cs_read_x;
       end if;
     end if;
   end process;

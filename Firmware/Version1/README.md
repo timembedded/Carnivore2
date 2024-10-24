@@ -18,12 +18,16 @@ The endgoal of this firmware is to implement MSX-Audio and OPL4 (moonsound) in a
 |:--|:--|:--|
 |0x7C-0x7D|W|YM2413 (FM-PAC)|　　　　　　
 |0x52|RW|Test register|
+|0xFC - 0xFF|RW|Memory mapper page select 0 - 3|
 
-## Memory map subslot 0
+## Memory map subslot 0 - Memory mapper
 
 |Address|R/W|Description|
 |:--|:--|:--|
-|0x4000-0xFFFF|R|Reserved|
+|0x0000-0x3FFF|RW|Memory mapper page 0|
+|0x4000-0x7FFF|RW|Memory mapper page 1|
+|0x8000-0xBFFF|RW|Memory mapper page 2|
+|0xC000-0xFFFF|RW|Memory mapper page 3|
 
 ## Memory map subslot 1 - Sunrise IDE (CompactFlash)
 

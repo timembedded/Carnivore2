@@ -130,6 +130,39 @@ architecture rtl of top is
   signal mem_flash_readdatavalid_i  : std_logic;
   signal mem_flash_waitrequest_i    : std_logic;
 
+  -- RAM avalon slave port
+  signal mem_ram_read_i             : std_logic;
+  signal mem_ram_write_i            : std_logic;
+  signal mem_ram_address_i          : std_logic_vector(20 downto 0);
+  signal mem_ram_writedata_i        : std_logic_vector(7 downto 0);
+  signal mem_ram_readdata_i         : std_logic_vector(7 downto 0);
+  signal mem_ram_readdatavalid_i    : std_logic;
+  signal mem_ram_waitrequest_i      : std_logic;
+
+  -- Avalon bus: Memory mapper
+  signal mem_mapper_read_i          : std_logic;
+  signal mem_mapper_write_i         : std_logic;
+  signal mem_mapper_address_i       : std_logic_vector(15 downto 0);
+  signal mem_mapper_writedata_i     : std_logic_vector(7 downto 0);
+  signal mem_mapper_readdata_i      : std_logic_vector(7 downto 0);
+  signal mem_mapper_readdatavalid_i : std_logic;
+  signal mem_mapper_waitrequest_i   : std_logic;
+  signal iom_mapper_read_i          : std_logic;
+  signal iom_mapper_write_i         : std_logic;
+  signal iom_mapper_address_i       : std_logic_vector(1 downto 0);
+  signal iom_mapper_writedata_i     : std_logic_vector(7 downto 0);
+  signal iom_mapper_readdata_i      : std_logic_vector(7 downto 0);
+  signal iom_mapper_readdatavalid_i : std_logic;
+  signal iom_mapper_waitrequest_i   : std_logic;
+  -- RAM
+  signal ram_mapper_read_i           : std_logic;
+  signal ram_mapper_write_i          : std_logic;
+  signal ram_mapper_address_i        : std_logic_vector(19 downto 0);
+  signal ram_mapper_writedata_i      : std_logic_vector(7 downto 0);
+  signal ram_mapper_readdata_i       : std_logic_vector(7 downto 0);
+  signal ram_mapper_readdatavalid_i  : std_logic;
+  signal ram_mapper_waitrequest_i    : std_logic;
+
   -- Avalon bus: FM-Pack
   signal mem_fmpac_read_i           : std_logic;
   signal mem_fmpac_write_i          : std_logic;
@@ -142,7 +175,6 @@ architecture rtl of top is
   signal iom_fmpac_address_i        : std_logic_vector(0 downto 0);
   signal iom_fmpac_writedata_i      : std_logic_vector(7 downto 0);
   signal iom_fmpac_waitrequest_i    : std_logic;
-
   -- FM-Pac
   signal BCMO       : std_logic_vector(15 downto 0);
   signal BCRO       : std_logic_vector(15 downto 0);
@@ -178,9 +210,6 @@ architecture rtl of top is
   signal count : unsigned(1 downto 0) := "00";
 
 begin
-
-  -- RAM
-  pRAMCS_n <= '1';
 
   -- ADC
   adc_md <= "00";
@@ -263,14 +292,14 @@ begin
   -- Flash interface
   --------------------------------------------------------------------
 
-  i_flash_interface : entity work.flash_interface(rtl)
+  i_flash_ram_interface : entity work.flash_ram_interface(rtl)
   port map
   (
     -- clock and reset
     clock             => sysclk,
     slot_reset        => slot_reset_i,
 
-    -- avalon slave ports
+    -- avalon slave ports for flash
     mes_flash_read           => mem_flash_read_i,
     mes_flash_write          => mem_flash_write_i,
     mes_flash_address        => mem_flash_address_i,
@@ -278,6 +307,15 @@ begin
     mes_flash_readdata       => mem_flash_readdata_i,
     mes_flash_readdatavalid  => mem_flash_readdatavalid_i,
     mes_flash_waitrequest    => mem_flash_waitrequest_i,
+
+    -- avalon slave ports for ram
+    mes_ram_read             => mem_ram_read_i,
+    mes_ram_write            => mem_ram_write_i,
+    mes_ram_address          => mem_ram_address_i,
+    mes_ram_writedata        => mem_ram_writedata_i,
+    mes_ram_readdata         => mem_ram_readdata_i,
+    mes_ram_readdatavalid    => mem_ram_readdatavalid_i,
+    mes_ram_waitrequest      => mem_ram_waitrequest_i,
 
     -- Parallel flash interface
     pFlAdr    => pFlAdr,
@@ -287,7 +325,10 @@ begin
     pFlW_n    => pFlW_n,
     pFlRP_n   => pFlRP_n,
     pFlRB_b   => pFlRB_b,
-    pFlVpp    => pFlVpp
+    pFlVpp    => pFlVpp,
+
+    -- SRAM interface
+    pRAMCS_n  => pRAMCS_n
   );
 
   i_flash_layout : work.flash_layout(rtl)
@@ -319,6 +360,32 @@ begin
     mes_ide_readdata          => rom_ide_readdata_i,
     mes_ide_readdatavalid     => rom_ide_readdatavalid_i,
     mes_ide_waitrequest       => rom_ide_waitrequest_i
+  );
+
+  i_ram_layout : work.ram_layout(rtl)
+  port map
+  (
+    -- clock
+    clock                     => sysclk,
+    slot_reset                => slot_reset_i,
+
+    -- RAM memory
+    mem_ram_read              => mem_ram_read_i,
+    mem_ram_write             => mem_ram_write_i,
+    mem_ram_address           => mem_ram_address_i,
+    mem_ram_writedata         => mem_ram_writedata_i,
+    mem_ram_readdata          => mem_ram_readdata_i,
+    mem_ram_readdatavalid     => mem_ram_readdatavalid_i,
+    mem_ram_waitrequest       => mem_ram_waitrequest_i,
+
+    -- Memory mapper
+    mes_mapper_read           => ram_mapper_read_i,
+    mes_mapper_write          => ram_mapper_write_i,
+    mes_mapper_address        => ram_mapper_address_i,
+    mes_mapper_writedata      => ram_mapper_writedata_i,
+    mes_mapper_readdata       => ram_mapper_readdata_i,
+    mes_mapper_readdatavalid  => ram_mapper_readdatavalid_i,
+    mes_mapper_waitrequest    => ram_mapper_waitrequest_i
   );
 
   --------------------------------------------------------------------
@@ -399,6 +466,22 @@ begin
     -- Functions
     test_reg          => open,
 
+    -- Memory mapper
+    mem_mapper_read          => mem_mapper_read_i,
+    mem_mapper_write         => mem_mapper_write_i,
+    mem_mapper_address       => mem_mapper_address_i,
+    mem_mapper_writedata     => mem_mapper_writedata_i,
+    mem_mapper_readdata      => mem_mapper_readdata_i,
+    mem_mapper_readdatavalid => mem_mapper_readdatavalid_i,
+    mem_mapper_waitrequest   => mem_mapper_waitrequest_i,
+    iom_mapper_read          => iom_mapper_read_i,
+    iom_mapper_write         => iom_mapper_write_i,
+    iom_mapper_address       => iom_mapper_address_i,
+    iom_mapper_writedata     => iom_mapper_writedata_i,
+    iom_mapper_readdata      => iom_mapper_readdata_i,
+    iom_mapper_readdatavalid => iom_mapper_readdatavalid_i,
+    iom_mapper_waitrequest   => iom_mapper_waitrequest_i,
+
     -- FM-Pack
     mem_fmpac_read           => mem_fmpac_read_i,
     mem_fmpac_write          => mem_fmpac_write_i,
@@ -420,6 +503,43 @@ begin
     mem_ide_readdata         => mem_ide_readdata_i,
     mem_ide_readdatavalid    => mem_ide_readdatavalid_i,
     mem_ide_waitrequest      => mem_ide_waitrequest_i
+  );
+
+  ----------------------------------------------------------------
+  -- Memory mapper (1MB)
+  ----------------------------------------------------------------
+
+  i_memory_mapper : entity work.memory_mapper(rtl)
+  port map
+  (
+    -- clock and reset
+    clock             => sysclk,
+    slot_reset        => slot_reset_i,
+
+    -- Avalon slave ports
+    mes_mapper_read           => mem_mapper_read_i,
+    mes_mapper_write          => mem_mapper_write_i,
+    mes_mapper_address        => mem_mapper_address_i,
+    mes_mapper_writedata      => mem_mapper_writedata_i,
+    mes_mapper_readdata       => mem_mapper_readdata_i,
+    mes_mapper_readdatavalid  => mem_mapper_readdatavalid_i,
+    mes_mapper_waitrequest    => mem_mapper_waitrequest_i,
+    ios_mapper_read           => iom_mapper_read_i,
+    ios_mapper_write          => iom_mapper_write_i,
+    ios_mapper_address        => iom_mapper_address_i,
+    ios_mapper_writedata      => iom_mapper_writedata_i,
+    ios_mapper_readdata       => iom_mapper_readdata_i,
+    ios_mapper_readdatavalid  => iom_mapper_readdatavalid_i,
+    ios_mapper_waitrequest    => iom_mapper_waitrequest_i,
+
+    -- RAM master port
+    ram_mapper_read           => ram_mapper_read_i,
+    ram_mapper_write          => ram_mapper_write_i,
+    ram_mapper_address        => ram_mapper_address_i,
+    ram_mapper_writedata      => ram_mapper_writedata_i,
+    ram_mapper_readdata       => ram_mapper_readdata_i,
+    ram_mapper_readdatavalid  => ram_mapper_readdatavalid_i,
+    ram_mapper_waitrequest    => ram_mapper_waitrequest_i
   );
 
   ----------------------------------------------------------------

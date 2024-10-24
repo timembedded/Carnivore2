@@ -32,6 +32,22 @@ entity address_decoding is
     -- Functions
     test_reg                  : out std_logic_vector(7 downto 0);
 
+    -- Subslot 0 - Memory mapper
+    mem_mapper_read           : out std_logic;
+    mem_mapper_write          : out std_logic;
+    mem_mapper_address        : out std_logic_vector(15 downto 0);
+    mem_mapper_writedata      : out std_logic_vector(7 downto 0);
+    mem_mapper_readdata       : in std_logic_vector(7 downto 0);
+    mem_mapper_readdatavalid  : in std_logic;
+    mem_mapper_waitrequest    : in std_logic;
+    iom_mapper_read           : out std_logic;
+    iom_mapper_write          : out std_logic;
+    iom_mapper_address        : out std_logic_vector(1 downto 0);
+    iom_mapper_writedata      : out std_logic_vector(7 downto 0);
+    iom_mapper_readdata       : in std_logic_vector(7 downto 0);
+    iom_mapper_readdatavalid  : in std_logic;
+    iom_mapper_waitrequest    : in std_logic;
+
     -- Subslot 1 - FM-PAC
     mem_fmpac_read            : out std_logic;
     mem_fmpac_write           : out std_logic;
@@ -64,20 +80,25 @@ architecture rtl of address_decoding is
   signal exp_select_i                           : std_logic_vector(3 downto 0);
 
   -- Chip select
-  type mem_cs_t is (MEM_CS_NONE, MEM_CS_EXTREG, MEM_CS_TESTREG, MEM_CS_FMPAC, MEM_CS_IDE);
-  type iom_cs_t is (IOM_CS_NONE, IOM_CS_FMPAC, IOM_CS_TESTREG);
+  type mem_cs_t is (MEM_CS_NONE, MEM_CS_EXTREG, MEM_CS_MAPPER, MEM_CS_FMPAC, MEM_CS_IDE);
+  type iom_cs_t is (IOM_CS_NONE, IOM_CS_MAPPER, IOM_CS_FMPAC, IOM_CS_TESTREG);
   signal mem_cs_i, mem_cs_read_x, mem_cs_read_r : mem_cs_t;
   signal iom_cs_i, iom_cs_read_x, iom_cs_read_r : iom_cs_t;
 
   -- Reads/writes
+  signal mem_mapper_read_i                        : std_logic;
+  signal mem_mapper_write_i                       : std_logic;
+  signal iom_mapper_read_i                        : std_logic;
+  signal iom_mapper_write_i                       : std_logic;
+
   signal mem_fmpac_read_i                         : std_logic;
   signal mem_fmpac_write_i                        : std_logic;
   signal iom_fmpac_write_i                        : std_logic;
+
   signal mem_ide_read_i                           : std_logic;
   signal mem_ide_write_i                          : std_logic;
 
    -- Avalon memory slave
-  signal mes_read_ff                              : std_logic;
   signal mes_readdata_x, mes_readdata_r           : std_logic_vector(8 downto 0);
   signal mes_readdatavalid_x, mes_readdatavalid_r : std_logic;
   signal mes_read_waitrequest_i                   : std_logic;
@@ -101,6 +122,16 @@ begin
   ios_readdata <= ios_readdata_r;
   ios_readdatavalid <= ios_readdatavalid_r;
   ios_waitrequest <= ios_read_waitrequest_i or ios_write_waitrequest_i;
+
+  -- Memory mapper
+  mem_mapper_read       <= mem_mapper_read_i;
+  mem_mapper_write      <= mem_mapper_write_i;
+  mem_mapper_address    <= mes_address;
+  mem_mapper_writedata  <= mes_writedata;
+  iom_mapper_read       <= iom_mapper_read_i;
+  iom_mapper_write      <= iom_mapper_write_i;
+  iom_mapper_address    <= ios_address(1 downto 0);
+  iom_mapper_writedata  <= ios_writedata;
 
   -- FM-Pac
   mem_fmpac_read        <= mem_fmpac_read_i;
@@ -163,8 +194,8 @@ begin
   begin
     if (mes_address = x"ffff") then
       mem_cs_i <= MEM_CS_EXTREG;
-    elsif (exp_select_i(0) = '1' and mes_address = x"8000") then
-      mem_cs_i <= MEM_CS_TESTREG;
+    elsif (exp_select_i(0) = '1') then
+      mem_cs_i <= MEM_CS_MAPPER;
     elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01") then
       mem_cs_i <= MEM_CS_IDE;
     elsif (exp_select_i(2) = '1' and mes_address(15 downto 14) = "01") then
@@ -177,12 +208,16 @@ begin
   -- Read
   mem_chipselect_read : process(all)
   begin
-    -- read signals
+    -- Read signals
+    mem_mapper_read_i <= '0';
     mem_fmpac_read_i <= '0';
     mem_ide_read_i <= '0';
 
     -- Read signals and waitrequest
     case (mem_cs_i) is
+      when MEM_CS_MAPPER =>
+        mem_mapper_read_i <= mes_read;
+        mes_read_waitrequest_i <= mem_mapper_waitrequest;
       when MEM_CS_FMPAC =>
         mem_fmpac_read_i <= mes_read;
         mes_read_waitrequest_i <= mem_fmpac_waitrequest;
@@ -212,10 +247,12 @@ begin
         -- ALL SLOTS -> Slot expander
         mes_readdatavalid_x <= '1';
         mes_readdata_x <= '1' & (not slot_expand_reg_r);
-      when MEM_CS_TESTREG => 
-        -- SUBSLOT 0 -> Test register @0x8000
-        mes_readdatavalid_x <= '1';
-        mes_readdata_x <= '1' & test_reg_r;
+      when MEM_CS_MAPPER =>
+        -- Memory mapper
+        if (mem_mapper_readdatavalid = '1') then
+          mes_readdatavalid_x <= '1';
+          mes_readdata_x <= '1' & mem_mapper_readdata;
+        end if;
       when MEM_CS_FMPAC =>
         -- FM-Pac
         if (mem_fmpac_readdatavalid = '1') then
@@ -238,11 +275,16 @@ begin
     mes_write_waitrequest_i <= '0';
 
     -- write signals
+    mem_mapper_write_i <= '0';
     mem_fmpac_write_i <= '0';
     mem_ide_write_i <= '0';
 
     -- create write signals
-    if (mes_write = '1' and mem_cs_i = MEM_CS_FMPAC) then
+    if (mes_write = '1' and mem_cs_i = MEM_CS_MAPPER) then
+      -- Memory mapper
+      mem_mapper_write_i <= '1';
+      mes_write_waitrequest_i <= mem_mapper_waitrequest;
+    elsif (mes_write = '1' and mem_cs_i = MEM_CS_FMPAC) then
       -- FM-Pack
       mem_fmpac_write_i <= '1';
       mes_write_waitrequest_i <= mem_fmpac_waitrequest;
@@ -261,7 +303,10 @@ begin
   -- Address decoding
   iom_chipselect : process(all)
   begin
-    if (ios_address(7 downto 1) = "0111"&"110") then
+    if (ios_address(7 downto 2) = "1111"&"11") then
+      -- 0xFC - 0xFF
+      iom_cs_i <= IOM_CS_MAPPER;
+    elsif (ios_address(7 downto 1) = "0111"&"110") then
       -- 0x7C - 0x7D
       iom_cs_i <= IOM_CS_FMPAC;
     elsif (ios_address = x"52") then
@@ -275,8 +320,14 @@ begin
   -- Read
   iom_chipselect_read : process(all)
   begin
-    -- I/O waitrequest
-   case (iom_cs_i) is
+    -- Read signals
+    iom_mapper_read_i <= '0';
+
+    -- I/O read signals and waitrequest
+    case (iom_cs_i) is
+      when IOM_CS_MAPPER =>
+        iom_mapper_read_i <= '1';
+        ios_read_waitrequest_i <= iom_mapper_waitrequest;
       when IOM_CS_FMPAC =>
         ios_read_waitrequest_i <= iom_fmpac_waitrequest;
       when others =>
@@ -298,6 +349,10 @@ begin
     ios_readdata_x <= "0--------";
     ios_readdatavalid_x <= '0';
     case (iom_cs_read_r) is
+      when IOM_CS_MAPPER =>
+        -- Memory mapper
+        ios_readdata_x <= '1' & iom_mapper_readdata;
+        ios_readdatavalid_x <= iom_mapper_readdatavalid;
       when IOM_CS_TESTREG =>
         -- Test register
         ios_readdata_x <= '1' & test_reg_r;
@@ -312,11 +367,16 @@ begin
     ios_write_waitrequest_i <= '0';
 
     -- write signals
+    iom_mapper_write_i <= '0';
     iom_fmpac_write_i <= '0';
 
     -- create write signals
-    if (ios_write = '1' and ios_address(7 downto 1) = "0111110") then
-      -- 7C..7D
+    if (ios_write = '1' and iom_cs_i = IOM_CS_MAPPER) then
+      -- 0xFC - 0xFF
+      iom_mapper_write_i <= '1';
+      ios_write_waitrequest_i <= iom_mapper_waitrequest;
+    elsif (ios_write = '1' and iom_cs_i = IOM_CS_FMPAC) then
+      -- 0x7C - 0x7D
       iom_fmpac_write_i <= '1';
       ios_write_waitrequest_i <= iom_fmpac_waitrequest;
     end if;

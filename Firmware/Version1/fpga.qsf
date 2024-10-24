@@ -282,18 +282,20 @@ set_global_assignment -name VHDL_FILE hdl/card_slave.vhd
 set_global_assignment -name VHDL_FILE hdl/address_decoding.vhd
 set_global_assignment -name VHDL_FILE hdl/fmpac.vhd
 set_global_assignment -name VHDL_FILE hdl/audio/sample_volume.vhd
-set_global_assignment -name VHDL_FILE hdl/flash_interface.vhd
+set_global_assignment -name VHDL_FILE hdl/flash_ram_interface.vhd
 set_global_assignment -name VHDL_FILE hdl/flash_layout.vhd
+set_global_assignment -name VHDL_FILE hdl/ram_layout.vhd
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
 set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pFlAdr
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pFlDat
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to pFlDat
-set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to pFlDat
+#set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to pFlDat
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pFlCS_n
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pFlOE_n
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pFlW_n
 set_global_assignment -name VHDL_FILE hdl/ide.vhd
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to pIDEDat
+set_global_assignment -name VHDL_FILE hdl/memory_mapper.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
