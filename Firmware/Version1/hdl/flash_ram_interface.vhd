@@ -47,7 +47,7 @@ end flash_ram_interface;
 architecture rtl of flash_ram_interface is
 
   constant FLASH_CYCLE_TIME : integer := 8; -- 80ns
-  constant RAM_CYCLE_TIME   : integer := 7; -- 70ns
+  constant RAM_CYCLE_TIME   : integer := 6; -- 60ns
 
   signal delay_time_x, delay_time_r : integer range 0 to FLASH_CYCLE_TIME-1;
 
