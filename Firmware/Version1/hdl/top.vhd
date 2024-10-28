@@ -96,6 +96,7 @@ architecture rtl of top is
   signal sysclk     : std_logic;
   signal locked     : std_logic;
   signal reset      : std_logic;
+  signal clken1ms_i : std_logic;
 
   -- Clock divider for 3.58 MHz clock
   signal clkena_3m58_i  : std_logic;
@@ -118,8 +119,27 @@ architecture rtl of top is
   signal iom_readdatavalid_i  : std_logic;
   signal iom_waitrequest_i    : std_logic;
 
+    -- io sniffer for writes
+  signal ism_address_i              : std_logic_vector(8 downto 0);
+  signal ism_write_i                : std_logic;
+  signal ism_writedata_i            : std_logic_vector(7 downto 0);
+  signal ism_waitrequest_i          : std_logic;
+
+  -- Keyboard sniffer
+  signal key_num_i                  : std_logic_vector(9 downto 0);
+  signal key_shift_i                : std_logic;
+  signal key_ctrl_i                 : std_logic;
+  signal key_graph_i                : std_logic;
+  signal key_code_i                 : std_logic;
+
   -- Synchronous reset
-  signal slot_reset_i         : std_logic;
+  signal slot_reset_i               : std_logic;
+
+  -- Functions
+  signal beep_i                     : std_logic;
+  signal enable_ide_i               : std_logic;
+  signal enable_mapper_i            : std_logic;
+  signal enable_fmpac_i             : std_logic;
 
   -- Flash avalon slave port
   signal mem_flash_read_i           : std_logic;
@@ -203,11 +223,12 @@ architecture rtl of top is
   signal rom_ide_waitrequest_i      : std_logic;
 
   -- Audio
-  signal audio_output_left_i : std_logic_vector(15 downto 0);
-  signal audio_output_right_i : std_logic_vector(15 downto 0);
+  signal audio_ack_i                : std_logic;
+  signal audio_output_left_i        : std_logic_vector(15 downto 0);
+  signal audio_output_right_i       : std_logic_vector(15 downto 0);
 
   -- Debug
-  signal count : unsigned(1 downto 0) := "00";
+  signal count                      : unsigned(1 downto 0) := "00";
 
 begin
 
@@ -264,7 +285,7 @@ begin
     clk => sysclk,
     pll_locked => locked,
     reset => reset,
-    clken1ms => open
+    clken1ms => clken1ms_i
   );
 
   --------------------------------------------------------------------
@@ -432,7 +453,62 @@ begin
     iom_read          => iom_read_i,
     iom_readdata      => iom_readdata_i,
     iom_readdatavalid => iom_readdatavalid_i,
-    iom_waitrequest   => iom_waitrequest_i
+    iom_waitrequest   => iom_waitrequest_i,
+
+    -- io sniffer
+    ism_address      => ism_address_i,
+    ism_write        => ism_write_i,
+    ism_writedata    => ism_writedata_i,
+    ism_waitrequest  => ism_waitrequest_i
+  );
+
+  ----------------------------------------------------------------
+  -- Keyboard sniffer
+  ----------------------------------------------------------------
+  key_sniff : entity work.keyboard_sniffer(rtl)
+  port map(
+    -- Clock and reset
+    clock             => sysclk,
+    slot_reset        => slot_reset_i,
+
+    -- avalon slave ports for flash    -- io sniffer
+    iss_address        => ism_address_i,
+    iss_write          => ism_write_i,
+    iss_writedata      => ism_writedata_i,
+    iss_waitrequest    => ism_waitrequest_i,
+
+    -- Keys
+    key_num     => key_num_i,
+    key_shift   => key_shift_i,
+    key_ctrl    => key_ctrl_i,
+    key_graph   => key_graph_i,
+    key_code    => key_code_i
+  );
+
+  ----------------------------------------------------------------
+  -- Configuration manager
+  ----------------------------------------------------------------
+  i_config_manager : entity work.config_manager(rtl)
+  port map(
+    -- Clock
+    clock             => sysclk,
+    slot_reset        => slot_reset_i,
+    clken1ms          => clken1ms_i,
+
+    -- Keys
+    key_num           => key_num_i,
+    key_shift         => key_shift_i,
+    key_ctrl          => key_ctrl_i,
+    key_graph         => key_graph_i,
+    key_code          => key_code_i,
+
+    -- Beep
+    beep              => beep_i,
+
+    -- Functions
+    enable_ide        => enable_ide_i,
+    enable_mapper     => enable_mapper_i,
+    enable_fmpac      => enable_fmpac_i
   );
 
   --------------------------------------------------------------------
@@ -465,6 +541,9 @@ begin
 
     -- Functions
     test_reg          => open,
+    enable_ide        => enable_ide_i,
+    enable_mapper     => enable_mapper_i,
+    enable_fmpac      => enable_fmpac_i,
 
     -- Memory mapper
     mem_mapper_read          => mem_mapper_read_i,
@@ -622,9 +701,6 @@ begin
   -- Audio Mixer
   ----------------------------------------------------------------
 
-  audio_output_left_i <= MFL;
-  audio_output_right_i <= MFR;
-
   VMFL : entity work.sample_volume(rtl)
   port map(
     clock => sysclk,
@@ -642,6 +718,34 @@ begin
   );
 
   --------------------------------------------------------------------
+  -- Waveform generator
+  --------------------------------------------------------------------
+
+  i_waveform_generator_left : entity work.waveform_generator(rtl)
+  port map
+  (
+    clk => sysclk,
+    reset => reset,
+    audio_strobe => audio_ack_i,
+    tone_enable => beep_i,
+    tone_select => '1',
+    audio_input => MFL,
+    audio_output => audio_output_left_i
+  );
+
+  i_waveform_generator_right : entity work.waveform_generator(rtl)
+  port map
+  (
+    clk => sysclk,
+    reset => reset,
+    audio_strobe => audio_ack_i,
+    tone_enable => beep_i,
+    tone_select => '1',
+    audio_input => MFR,
+    audio_output => audio_output_right_i
+  );
+
+  --------------------------------------------------------------------
   -- Audio output
   --------------------------------------------------------------------
 
@@ -652,7 +756,7 @@ begin
     reset => reset,
     audio_left => audio_output_left_i,
     audio_right => audio_output_right_i,
-    audio_ack => open,
+    audio_ack => audio_ack_i,
     i2s_mclk => dac_sck,
     i2s_lrclk => dac_lrck,
     i2s_sclk => dac_bck,

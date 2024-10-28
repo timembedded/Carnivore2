@@ -31,6 +31,9 @@ entity address_decoding is
 
     -- Functions
     test_reg                  : out std_logic_vector(7 downto 0);
+    enable_ide                : in std_logic;
+    enable_mapper             : in std_logic;
+    enable_fmpac              : in std_logic;
 
     -- Subslot 0 - Memory mapper
     mem_mapper_read           : out std_logic;
@@ -194,11 +197,11 @@ begin
   begin
     if (mes_address = x"ffff") then
       mem_cs_i <= MEM_CS_EXTREG;
-    elsif (exp_select_i(0) = '1') then
+    elsif (exp_select_i(0) = '1' and enable_mapper = '1') then
       mem_cs_i <= MEM_CS_MAPPER;
-    elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01") then
+    elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01" and enable_ide = '1') then
       mem_cs_i <= MEM_CS_IDE;
-    elsif (exp_select_i(2) = '1' and mes_address(15 downto 14) = "01") then
+    elsif (exp_select_i(2) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac = '1') then
       mem_cs_i <= MEM_CS_FMPAC;
     else
       mem_cs_i <= MEM_CS_NONE;
@@ -303,10 +306,10 @@ begin
   -- Address decoding
   iom_chipselect : process(all)
   begin
-    if (ios_address(7 downto 2) = "1111"&"11") then
+    if (ios_address(7 downto 2) = "1111"&"11" and enable_mapper = '1') then
       -- 0xFC - 0xFF
       iom_cs_i <= IOM_CS_MAPPER;
-    elsif (ios_address(7 downto 1) = "0111"&"110") then
+    elsif (ios_address(7 downto 1) = "0111"&"110" and enable_fmpac = '1') then
       -- 0x7C - 0x7D
       iom_cs_i <= IOM_CS_FMPAC;
     elsif (ios_address = x"52") then
@@ -391,7 +394,7 @@ begin
     if rising_edge(clock) then
       if slot_reset = '1' then
         slot_expand_reg_r <= x"00";
-        test_reg_r <= x"A1";
+        test_reg_r <= x"00";
         mem_cs_read_r <= MEM_CS_NONE;
         iom_cs_read_r <= IOM_CS_NONE;
       else

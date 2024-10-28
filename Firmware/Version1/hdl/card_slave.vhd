@@ -50,16 +50,27 @@ entity card_bus_slave is
     iom_read           : out std_logic;
     iom_readdata       : in std_logic_vector(8 downto 0);
     iom_readdatavalid  : in std_logic;
-    iom_waitrequest    : in std_logic
+    iom_waitrequest    : in std_logic;
+
+    -- io sniffer
+    ism_address        : out std_logic_vector(8 downto 0); -- 0x00-0xff = writes, 0x100-0x1ff = reads
+    ism_write          : out std_logic;
+    ism_writedata      : out std_logic_vector(7 downto 0);
+    ism_waitrequest    : in std_logic
   );
 end card_bus_slave;
 
 architecture rtl of card_bus_slave is
 
+  constant IO_CYCLE_TIME   : integer := 15; -- 150ns
+
   -- State machine
   type state_t is (S_RESET, S_IDLE, S_MEM_START_READ, S_MEM_RETURN_DATA, S_MEM_START_WRITE, S_MEM_WRITE_DONE,
                    S_IO_START_READ, S_IO_RETURN_DATA, S_IO_START_WRITE, S_IO_WRITE_DONE);
   signal state_x, state_r                 : state_t;
+  type sniff_state_t is (SF_RESET, SF_IDLE, SF_IO_START_SNIFF, SF_IO_FINISH_SNIFF);
+  signal sniff_state_x, sniff_state_r     : sniff_state_t;
+  signal sniff_io_time_x, sniff_io_time_r : integer range 0 to IO_CYCLE_TIME-1;
 
   -- Asynchronous signals
   signal memrd_i, memwr_i                 : std_logic;
@@ -87,6 +98,11 @@ architecture rtl of card_bus_slave is
   signal iom_write_x, iom_write_r         : std_logic;
   signal iom_address_x, iom_address_r     : std_logic_vector(7 downto 0);
   signal iom_writedata_x, iom_writedata_r : std_logic_vector(7 downto 0);
+
+  -- io sniffer
+  signal ism_address_x, ism_address_r     : std_logic_vector(8 downto 0);
+  signal ism_write_x, ism_write_r         : std_logic;
+  signal ism_writedata_x, ism_writedata_r : std_logic_vector(7 downto 0);
 
 begin
 
@@ -123,6 +139,11 @@ begin
   iom_write     <= iom_write_r;
   iom_writedata <= iom_writedata_r;
   iom_read      <= iom_read_r;
+
+  -- io sniffer for writes
+  ism_address     <= ism_address_r;
+  ism_write       <= ism_write_r;
+  ism_writedata   <= ism_writedata_r;
 
   -- Memory state-machine
   mem : process(all)
@@ -257,25 +278,75 @@ begin
     end case;
   end process;
 
+  -- Sniffer
+  sniffer : process(all)
+  begin
+    sniff_state_x <= sniff_state_r;
+    sniff_io_time_x <= sniff_io_time_r;
+
+    ism_address_x <= ism_address_r;
+    ism_write_x <= '0';
+    ism_writedata_x <= ism_writedata_r;
+
+    case (sniff_state_r) is
+      when SF_RESET =>
+        if (slt_reset_n_r = '1') then
+          sniff_state_x <= SF_IDLE;
+        end if;
+
+      when SF_IDLE =>
+        sniff_io_time_x <= IO_CYCLE_TIME-1;
+        if (slt_reset_n_r = '0') then
+          sniff_state_x <= SF_RESET;
+        elsif (iord_r = '1') then
+          ism_address_x <= '1' & slt_addr(7 downto 0);
+          sniff_state_x <= SF_IO_START_SNIFF;
+        elsif (iowr_r = '1') then
+          ism_address_x <= '0' & slt_addr(7 downto 0);
+          sniff_state_x <= SF_IO_START_SNIFF;
+        end if;
+
+      when SF_IO_START_SNIFF =>
+        if (sniff_io_time_r /= 0) then
+          sniff_io_time_x <= sniff_io_time_r - 1;
+        else
+          ism_writedata_x <= slt_data;
+          ism_write_x <= '1';
+          sniff_state_x <= SF_IO_FINISH_SNIFF;
+        end if;
+      when SF_IO_FINISH_SNIFF =>
+        if (ism_write_r = '1' and ism_waitrequest = '1') then
+          ism_write_x <= '1';
+        elsif (iord_s = '0' and iowr_r = '0') then
+          sniff_state_x <= SF_IDLE;
+        end if;
+
+    end case;
+  end process;
+
   -- Registers
   regs : process(clock, reset)
   begin
     if (reset = '1') then
       state_r <= S_RESET;
+      sniff_state_r <= SF_RESET;
       slot_reset_n_r <= '0';
       slot_readdata_r(8) <= '0';
       mem_read_r <= '0';
       mem_write_r <= '0';
       iom_read_r <= '0';
       iom_write_r <= '0';
+      ism_write_r <= '0';
     elsif rising_edge(clock) then
       state_r <= state_x;
+      sniff_state_r <= sniff_state_x;
       slot_reset_n_r <= slot_reset_n_x;
       slot_readdata_r(8) <= slot_readdata_x(8);
       mem_read_r <= mem_read_x;
       mem_write_r <= mem_write_x;
       iom_read_r <= iom_read_x;
       iom_write_r <= iom_write_x;
+      ism_write_r <= ism_write_x;
     end if;
     if rising_edge(clock) then
       slot_readdata_r(7 downto 0) <= slot_readdata_x(7 downto 0);
@@ -283,6 +354,10 @@ begin
       mem_writedata_r <= mem_writedata_x;
       iom_address_r <= iom_address_x;
       iom_writedata_r <= iom_writedata_x;
+      -- io sniffer
+      sniff_io_time_r <= sniff_io_time_x;
+      ism_address_r <= ism_address_x;
+      ism_writedata_r <= ism_writedata_x;
     end if;
   end process;
 
