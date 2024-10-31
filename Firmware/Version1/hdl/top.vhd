@@ -104,7 +104,7 @@ architecture rtl of top is
   -- Avalon memory master
   signal mem_read_i           : std_logic;
   signal mem_write_i          : std_logic;
-  signal mem_address_i        : std_logic_vector(15 downto 0);
+  signal mem_address_i        : std_logic_vector(16 downto 0);
   signal mem_writedata_i      : std_logic_vector(7 downto 0);
   signal mem_readdata_i       : std_logic_vector(8 downto 0);
   signal mem_readdatavalid_i  : std_logic;
@@ -140,6 +140,7 @@ architecture rtl of top is
   signal enable_ide_i               : std_logic;
   signal enable_mapper_i            : std_logic;
   signal enable_fmpac_i             : std_logic;
+  signal enable_scc_i               : std_logic;
 
   -- Flash avalon slave port
   signal mem_flash_read_i           : std_logic;
@@ -200,12 +201,28 @@ architecture rtl of top is
   signal BCRO       : std_logic_vector(15 downto 0);
   signal MFL        : std_logic_vector(15 downto 0);
   signal MFR        : std_logic_vector(15 downto 0);
+  signal MCL        : std_logic_vector(15 downto 0);
+  signal MCR        : std_logic_vector(15 downto 0);
   -- ROM
   signal rom_fmpac_read_i           : std_logic;
   signal rom_fmpac_address_i        : std_logic_vector(13 downto 0);
   signal rom_fmpac_readdata_i       : std_logic_vector(7 downto 0);
   signal rom_fmpac_readdatavalid_i  : std_logic;
   signal rom_fmpac_waitrequest_i    : std_logic;
+
+  -- Avalon bus: SCC
+  signal mem_scc_read_i             : std_logic;
+  signal mem_scc_write_i            : std_logic;
+  signal mem_scc_address_i          : std_logic_vector(15 downto 0);
+  signal mem_scc_writedata_i        : std_logic_vector(7 downto 0);
+  signal mem_scc_readdata_i         : std_logic_vector(7 downto 0);
+  signal mem_scc_readdatavalid_i    : std_logic;
+  signal mem_scc_waitrequest_i      : std_logic;
+  -- ROM
+  signal mem_rommap_read_i          : std_logic;
+  signal mem_rommap_readdatavalid_i : std_logic;
+  -- Audio
+  signal scc_amp_i                  : std_logic_vector(10 downto 0);
 
   -- Avalon bus: IDE
   signal mem_ide_read_i             : std_logic;
@@ -508,7 +525,8 @@ begin
     -- Functions
     enable_ide        => enable_ide_i,
     enable_mapper     => enable_mapper_i,
-    enable_fmpac      => enable_fmpac_i
+    enable_fmpac      => enable_fmpac_i,
+    enable_scc        => enable_scc_i
   );
 
   --------------------------------------------------------------------
@@ -544,6 +562,7 @@ begin
     enable_ide        => enable_ide_i,
     enable_mapper     => enable_mapper_i,
     enable_fmpac      => enable_fmpac_i,
+    enable_scc        => enable_scc_i,
 
     -- Memory mapper
     mem_mapper_read          => mem_mapper_read_i,
@@ -561,6 +580,15 @@ begin
     iom_mapper_readdatavalid => iom_mapper_readdatavalid_i,
     iom_mapper_waitrequest   => iom_mapper_waitrequest_i,
 
+    -- IDE
+    mem_ide_read             => mem_ide_read_i,
+    mem_ide_write            => mem_ide_write_i,
+    mem_ide_address          => mem_ide_address_i,
+    mem_ide_writedata        => mem_ide_writedata_i,
+    mem_ide_readdata         => mem_ide_readdata_i,
+    mem_ide_readdatavalid    => mem_ide_readdatavalid_i,
+    mem_ide_waitrequest      => mem_ide_waitrequest_i,
+
     -- FM-Pack
     mem_fmpac_read           => mem_fmpac_read_i,
     mem_fmpac_write          => mem_fmpac_write_i,
@@ -574,14 +602,14 @@ begin
     iom_fmpac_writedata      => iom_fmpac_writedata_i,
     iom_fmpac_waitrequest    => iom_fmpac_waitrequest_i,
 
-    -- IDE
-    mem_ide_read             => mem_ide_read_i,
-    mem_ide_write            => mem_ide_write_i,
-    mem_ide_address          => mem_ide_address_i,
-    mem_ide_writedata        => mem_ide_writedata_i,
-    mem_ide_readdata         => mem_ide_readdata_i,
-    mem_ide_readdatavalid    => mem_ide_readdatavalid_i,
-    mem_ide_waitrequest      => mem_ide_waitrequest_i
+    -- SCC
+    mem_scc_read             => mem_scc_read_i,
+    mem_scc_write            => mem_scc_write_i,
+    mem_scc_address          => mem_scc_address_i,
+    mem_scc_writedata        => mem_scc_writedata_i,
+    mem_scc_readdata         => mem_scc_readdata_i,
+    mem_scc_readdatavalid    => mem_scc_readdatavalid_i,
+    mem_scc_waitrequest      => mem_scc_waitrequest_i
   );
 
   ----------------------------------------------------------------
@@ -660,6 +688,44 @@ begin
   );
 
   ----------------------------------------------------------------
+  -- SCC
+  ----------------------------------------------------------------
+
+  i_scc : entity work.scc(rtl)
+  port map
+  (
+    -- clock and reset
+    clock                 => sysclk,
+    slot_reset            => slot_reset_i,
+    clkena_3m58           => clkena_3m58_i,
+
+    -- Configuration
+    SccEna                => enable_scc_i,
+
+    -- Avalon slave ports
+    mes_scc_read          => mem_scc_read_i,
+    mes_scc_write         => mem_scc_write_i,
+    mes_scc_address       => mem_scc_address_i,
+    mes_scc_writedata     => mem_scc_writedata_i,
+    mes_scc_readdata      => mem_scc_readdata_i,
+    mes_scc_readdatavalid => mem_scc_readdatavalid_i,
+    mes_scc_waitrequest   => mem_scc_waitrequest_i,
+    -- avalon master port
+    mem_scc_read          => mem_rommap_read_i,
+    mem_scc_write         => open,
+    mem_scc_address       => open,
+    mem_scc_writedata     => open,
+    mem_scc_readdata      => x"ff",
+    mem_scc_readdatavalid => mem_rommap_readdatavalid_i,
+    mem_scc_waitrequest   => '0',
+
+    -- Audio output
+    SccAmp    => scc_amp_i
+  );
+
+  mem_rommap_readdatavalid_i <= mem_rommap_read_i when rising_edge(sysclk);
+
+  ----------------------------------------------------------------
   -- IDE
   ----------------------------------------------------------------
 
@@ -717,6 +783,22 @@ begin
     level => LVF
   );
 
+  VMSL : entity work.sample_volume(rtl)
+  port map(
+    clock => sysclk,
+    sin16 => std_logic_vector(signed(MFL) + signed(scc_amp_i & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10))),
+    sout16 => MCL,
+    level => LVF
+  );
+  
+  VMSR : entity work.sample_volume(rtl)
+  port map (
+    clock => sysclk,
+    sin16 => std_logic_vector(signed(MFR) + signed(scc_amp_i & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10) & scc_amp_i(10))),
+    sout16 => MCR,
+    level => LVF
+  );
+
   --------------------------------------------------------------------
   -- Waveform generator
   --------------------------------------------------------------------
@@ -729,7 +811,7 @@ begin
     audio_strobe => audio_ack_i,
     tone_enable => beep_i,
     tone_select => '1',
-    audio_input => MFL,
+    audio_input => MCL,
     audio_output => audio_output_left_i
   );
 
@@ -741,7 +823,7 @@ begin
     audio_strobe => audio_ack_i,
     tone_enable => beep_i,
     tone_select => '1',
-    audio_input => MFR,
+    audio_input => MCR,
     audio_output => audio_output_right_i
   );
 

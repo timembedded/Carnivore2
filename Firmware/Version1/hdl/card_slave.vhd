@@ -35,7 +35,7 @@ entity card_bus_slave is
     slot_reset        : out std_logic;
 
     -- avalon memory master
-    mem_address        : out std_logic_vector(15 downto 0);
+    mem_address        : out std_logic_vector(16 downto 0);
     mem_write          : out std_logic;
     mem_writedata      : out std_logic_vector(7 downto 0);
     mem_read           : out std_logic;
@@ -68,18 +68,21 @@ architecture rtl of card_bus_slave is
   type state_t is (S_RESET, S_IDLE, S_MEM_START_READ, S_MEM_RETURN_DATA, S_MEM_START_WRITE, S_MEM_WRITE_DONE,
                    S_IO_START_READ, S_IO_RETURN_DATA, S_IO_START_WRITE, S_IO_WRITE_DONE);
   signal state_x, state_r                 : state_t;
-  type sniff_state_t is (SF_RESET, SF_IDLE, SF_IO_START_SNIFF, SF_IO_FINISH_SNIFF);
+  type sniff_state_t is (SF_RESET, SF_IDLE, SF_READ_SNIFF, SF_FINISH_SNIFF);
   signal sniff_state_x, sniff_state_r     : sniff_state_t;
   signal sniff_io_time_x, sniff_io_time_r : integer range 0 to IO_CYCLE_TIME-1;
 
   -- Asynchronous signals
   signal memrd_i, memwr_i                 : std_logic;
+  signal memxrd_i, memxwr_i               : std_logic;
   signal iord_i, iowr_i                   : std_logic;
 
   -- Synchronizers
   signal slt_reset_n_s, slt_reset_n_r     : std_logic;
-  signal memrd_s, memrd_r                 : std_logic;
-  signal memwr_s, memwr_r                 : std_logic;
+  signal memrd_s, memrd_r, memrd_d        : std_logic;
+  signal memwr_s, memwr_r, memwr_d        : std_logic;
+  signal memxrd_s, memxrd_r               : std_logic;
+  signal memxwr_s, memxwr_r               : std_logic;
   signal iord_s, iord_r                   : std_logic;
   signal iowr_s, iowr_r                   : std_logic;
 
@@ -87,10 +90,15 @@ architecture rtl of card_bus_slave is
   signal slot_reset_n_x, slot_reset_n_r   : std_logic;
   signal slot_readdata_x, slot_readdata_r : std_logic_vector(8 downto 0);
 
+  -- Other slot
+  signal slot_reg_x, slot_reg_r           : std_logic_vector(7 downto 0);
+  signal other_slot_x, other_slot_r       : integer range 0 to 2;
+  signal sltsl1_i, sltsl2_i, sltslx_i     : std_logic;
+
   -- Avalon memory master
   signal mem_read_x, mem_read_r           : std_logic;
   signal mem_write_x, mem_write_r         : std_logic;
-  signal mem_address_x, mem_address_r     : std_logic_vector(15 downto 0);
+  signal mem_address_x, mem_address_r     : std_logic_vector(16 downto 0);
   signal mem_writedata_x, mem_writedata_r : std_logic_vector(7 downto 0);
 
   -- Avalon io master
@@ -106,13 +114,17 @@ architecture rtl of card_bus_slave is
 
 begin
 
+  -- Reset
   slot_reset <= not slot_reset_n_r;
 
+  -- TODO: Implement wait-state generation
   slt_wait_n <= 'Z';  -- For now never generate wait states
 
   -- Asynchronous signals
   memrd_i <= '1' when slt_sltsl_n = '0' and slt_merq_n = '0' and slt_rd_n = '0' else '0';
   memwr_i <= '1' when slt_sltsl_n = '0' and slt_merq_n = '0' and slt_wr_n = '0' else '0';
+  memxrd_i <= '1' when sltslx_i = '1' and slt_merq_n = '0' and slt_rd_n = '0' else '0';
+  memxwr_i <= '1' when sltslx_i = '1' and slt_merq_n = '0' and slt_wr_n = '0' else '0';
   iord_i <= '1' when slt_iorq_n = '0' and slt_rd_n = '0' else '0';
   iowr_i <= '1' when slt_iorq_n = '0' and slt_wr_n = '0' else '0';
 
@@ -121,8 +133,14 @@ begin
   slt_reset_n_r <= slt_reset_n_s when rising_edge(clock);
   memrd_s <= memrd_i when rising_edge(clock);
   memrd_r <= memrd_s when rising_edge(clock);
+  memrd_d <= memrd_r when rising_edge(clock);
   memwr_s <= memwr_i when rising_edge(clock);
   memwr_r <= memwr_s when rising_edge(clock);
+  memwr_d <= memwr_r when rising_edge(clock);
+  memxrd_s <= memxrd_i when rising_edge(clock);
+  memxrd_r <= memxrd_s when rising_edge(clock);
+  memxwr_s <= memxwr_i when rising_edge(clock);
+  memxwr_r <= memxwr_s when rising_edge(clock);
   iord_s <= iord_i when rising_edge(clock);
   iord_r <= iord_s when rising_edge(clock);
   iowr_s <= iowr_i when rising_edge(clock);
@@ -184,13 +202,13 @@ begin
         -- to be stable when one of the read/writes gets active
         if (slt_reset_n_r = '0') then
           state_x <= S_RESET;
-        elsif (memrd_r = '1') then
+        elsif (memrd_r = '1' or memxrd_r = '1') then
           mem_read_x <= '1';
-          mem_address_x <= slt_addr;
+          mem_address_x <= sltslx_i & slt_addr;
           state_x <= S_MEM_START_READ;
-        elsif (memwr_r = '1') then
+        elsif (memwr_r = '1' or memxwr_r = '1') then
           mem_write_x <= '1';
-          mem_address_x <= slt_addr;
+          mem_address_x <= sltslx_i & slt_addr;
           mem_writedata_x <= slt_data;
           state_x <= S_MEM_START_WRITE;
         elsif (iord_r = '1') then
@@ -213,10 +231,14 @@ begin
         end if;
       when S_MEM_RETURN_DATA =>
         -- Show the data on the Z80 bus
+        if (mem_address_r(16) = '1') then
+          -- Only for 'other slot' the bdir signal needs to be asserted
+          slt_bdir_n <= '0';
+        end if;
         if (mem_readdatavalid = '1') then
           slot_readdata_x <= mem_readdata;
         end if;
-        if (memrd_s = '0') then
+        if (memrd_r = '0' and memxrd_r = '0') then
           slot_readdata_x(8) <= '0';
           state_x <= S_IDLE;
         end if;
@@ -227,7 +249,7 @@ begin
           mem_write_x <= '1';
         else
           -- We're done
-          if (memwr_s = '0') then
+          if (memwr_r = '0' and memxwr_r = '0') then
             state_x <= S_IDLE;
           else
             state_x <= S_MEM_WRITE_DONE;
@@ -235,7 +257,7 @@ begin
         end if;
       when S_MEM_WRITE_DONE =>
         -- Wait for write signal to deassert
-        if (memwr_s = '0') then
+        if (memwr_r = '0' and memxwr_r = '0') then
           state_x <= S_IDLE;
         end if;
 
@@ -252,7 +274,7 @@ begin
         if (iom_readdatavalid = '1') then
           slot_readdata_x <= iom_readdata;
         end if;
-        if (iord_s = '0') then
+        if (iord_r = '0') then
           slot_readdata_x(8) <= '0';
           state_x <= S_IDLE;
         end if;
@@ -263,7 +285,7 @@ begin
           iom_write_x <= '1';
         else
           -- We're done
-          if (iowr_s = '0') then
+          if (iowr_r = '0') then
             state_x <= S_IDLE;
           else
             state_x <= S_IO_WRITE_DONE;
@@ -271,11 +293,46 @@ begin
         end if;
       when S_IO_WRITE_DONE =>
         -- Wait for write signal to deassert
-        if (iowr_s = '0') then
+        if (iowr_r = '0') then
           state_x <= S_IDLE;
         end if;
 
     end case;
+  end process;
+
+  -- Other slot
+  sltsl1_i <= '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "00" and slot_reg_r(1 downto 0) = "01") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "01" and slot_reg_r(3 downto 2) = "01") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "10" and slot_reg_r(5 downto 4) = "01") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "11" and slot_reg_r(7 downto 6) = "01") else '0';
+
+  sltsl2_i <= '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "00" and slot_reg_r(1 downto 0) = "10") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "01" and slot_reg_r(3 downto 2) = "10") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "10" and slot_reg_r(5 downto 4) = "10") else
+              '1' when (slt_merq_n = '0' and slt_addr(15 downto 14) = "11" and slot_reg_r(7 downto 6) = "10") else '0';
+
+  sltslx_i <= '1' when (other_slot_r = 1 and sltsl1_i = '1') else
+              '1' when (other_slot_r = 2 and sltsl2_i = '1') else '0';
+
+  xslot : process(all)
+  begin
+    slot_reg_x <= slot_reg_r;
+    other_slot_x <= other_slot_r;
+
+    if (iom_write_r = '1' and iom_address_r = x"A8") then
+      slot_reg_x <= iom_writedata_r;
+    end if;
+
+    if ((memrd_r = '1' and memrd_d = '0') or (memwr_r = '1' and memwr_d = '0')) then
+      if (sltsl1_i = '1') then
+        other_slot_x <= 2;
+      elsif (sltsl2_i = '1') then
+        other_slot_x <= 1;
+      else
+        other_slot_x <= 0;
+      end if;
+    end if;
+
   end process;
 
   -- Sniffer
@@ -300,27 +357,29 @@ begin
           sniff_state_x <= SF_RESET;
         elsif (iord_r = '1') then
           ism_address_x <= '1' & slt_addr(7 downto 0);
-          sniff_state_x <= SF_IO_START_SNIFF;
+          sniff_state_x <= SF_READ_SNIFF;
         elsif (iowr_r = '1') then
           ism_address_x <= '0' & slt_addr(7 downto 0);
-          sniff_state_x <= SF_IO_START_SNIFF;
+          ism_writedata_x <= slt_data;
+          ism_write_x <= '1';
+          sniff_state_x <= SF_FINISH_SNIFF;
         end if;
 
-      when SF_IO_START_SNIFF =>
+      when SF_READ_SNIFF =>
         if (sniff_io_time_r /= 0) then
           sniff_io_time_x <= sniff_io_time_r - 1;
         else
-          ism_writedata_x <= slt_data;
           ism_write_x <= '1';
-          sniff_state_x <= SF_IO_FINISH_SNIFF;
+          ism_writedata_x <= slt_data;
+          sniff_state_x <= SF_FINISH_SNIFF;
         end if;
-      when SF_IO_FINISH_SNIFF =>
+
+      when SF_FINISH_SNIFF =>
         if (ism_write_r = '1' and ism_waitrequest = '1') then
           ism_write_x <= '1';
         elsif (iord_s = '0' and iowr_r = '0') then
           sniff_state_x <= SF_IDLE;
         end if;
-
     end case;
   end process;
 
@@ -331,6 +390,8 @@ begin
       state_r <= S_RESET;
       sniff_state_r <= SF_RESET;
       slot_reset_n_r <= '0';
+      slot_reg_r <= x"00";
+      other_slot_r <= 0;
       slot_readdata_r(8) <= '0';
       mem_read_r <= '0';
       mem_write_r <= '0';
@@ -341,6 +402,8 @@ begin
       state_r <= state_x;
       sniff_state_r <= sniff_state_x;
       slot_reset_n_r <= slot_reset_n_x;
+      slot_reg_r <= slot_reg_x;
+      other_slot_r <= other_slot_x;
       slot_readdata_r(8) <= slot_readdata_x(8);
       mem_read_r <= mem_read_x;
       mem_write_r <= mem_write_x;

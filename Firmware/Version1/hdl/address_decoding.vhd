@@ -14,7 +14,7 @@ entity address_decoding is
     -- Avalon memory slave
     mes_read                  : in std_logic;
     mes_write                 : in std_logic;
-    mes_address               : in std_logic_vector(15 downto 0);
+    mes_address               : in std_logic_vector(16 downto 0);
     mes_writedata             : in std_logic_vector(7 downto 0);
     mes_readdata              : out std_logic_vector(8 downto 0);
     mes_readdatavalid         : out std_logic;
@@ -34,8 +34,9 @@ entity address_decoding is
     enable_ide                : in std_logic;
     enable_mapper             : in std_logic;
     enable_fmpac              : in std_logic;
+    enable_scc                : in std_logic;
 
-    -- Subslot 0 - Memory mapper
+    -- Memory mapper
     mem_mapper_read           : out std_logic;
     mem_mapper_write          : out std_logic;
     mem_mapper_address        : out std_logic_vector(15 downto 0);
@@ -51,7 +52,16 @@ entity address_decoding is
     iom_mapper_readdatavalid  : in std_logic;
     iom_mapper_waitrequest    : in std_logic;
 
-    -- Subslot 1 - FM-PAC
+    -- IDE
+    mem_ide_read              : out std_logic;
+    mem_ide_write             : out std_logic;
+    mem_ide_address           : out std_logic_vector(13 downto 0);
+    mem_ide_writedata         : out std_logic_vector(7 downto 0);
+    mem_ide_readdata          : in std_logic_vector(7 downto 0);
+    mem_ide_readdatavalid     : in std_logic;
+    mem_ide_waitrequest       : in std_logic;
+
+    -- FM-PAC
     mem_fmpac_read            : out std_logic;
     mem_fmpac_write           : out std_logic;
     mem_fmpac_address         : out std_logic_vector(13 downto 0);
@@ -64,14 +74,14 @@ entity address_decoding is
     iom_fmpac_writedata       : out std_logic_vector(7 downto 0);
     iom_fmpac_waitrequest     : in std_logic;
 
-    -- Subslot 2 - IDE
-    mem_ide_read              : out std_logic;
-    mem_ide_write             : out std_logic;
-    mem_ide_address           : out std_logic_vector(13 downto 0);
-    mem_ide_writedata         : out std_logic_vector(7 downto 0);
-    mem_ide_readdata          : in std_logic_vector(7 downto 0);
-    mem_ide_readdatavalid     : in std_logic;
-    mem_ide_waitrequest       : in std_logic
+    -- SCC
+    mem_scc_read              : out std_logic;
+    mem_scc_write             : out std_logic;
+    mem_scc_address           : out std_logic_vector(15 downto 0);
+    mem_scc_writedata         : out std_logic_vector(7 downto 0);
+    mem_scc_readdata          : in std_logic_vector(7 downto 0);
+    mem_scc_readdatavalid     : in std_logic;
+    mem_scc_waitrequest       : in std_logic
 );
 end address_decoding;
 
@@ -83,7 +93,7 @@ architecture rtl of address_decoding is
   signal exp_select_i                           : std_logic_vector(3 downto 0);
 
   -- Chip select
-  type mem_cs_t is (MEM_CS_NONE, MEM_CS_EXTREG, MEM_CS_MAPPER, MEM_CS_FMPAC, MEM_CS_IDE);
+  type mem_cs_t is (MEM_CS_NONE, MEM_CS_EXTREG, MEM_CS_MAPPER, MEM_CS_IDE, MEM_CS_FMPAC, MEM_CS_SCC);
   type iom_cs_t is (IOM_CS_NONE, IOM_CS_MAPPER, IOM_CS_FMPAC, IOM_CS_TESTREG);
   signal mem_cs_i, mem_cs_read_x, mem_cs_read_r : mem_cs_t;
   signal iom_cs_i, iom_cs_read_x, iom_cs_read_r : iom_cs_t;
@@ -94,12 +104,15 @@ architecture rtl of address_decoding is
   signal iom_mapper_read_i                        : std_logic;
   signal iom_mapper_write_i                       : std_logic;
 
+  signal mem_ide_read_i                           : std_logic;
+  signal mem_ide_write_i                          : std_logic;
+
   signal mem_fmpac_read_i                         : std_logic;
   signal mem_fmpac_write_i                        : std_logic;
   signal iom_fmpac_write_i                        : std_logic;
 
-  signal mem_ide_read_i                           : std_logic;
-  signal mem_ide_write_i                          : std_logic;
+  signal mem_scc_read_i                           : std_logic;
+  signal mem_scc_write_i                          : std_logic;
 
    -- Avalon memory slave
   signal mes_readdata_x, mes_readdata_r           : std_logic_vector(8 downto 0);
@@ -129,12 +142,18 @@ begin
   -- Memory mapper
   mem_mapper_read       <= mem_mapper_read_i;
   mem_mapper_write      <= mem_mapper_write_i;
-  mem_mapper_address    <= mes_address;
+  mem_mapper_address    <= mes_address(15 downto 0);
   mem_mapper_writedata  <= mes_writedata;
   iom_mapper_read       <= iom_mapper_read_i;
   iom_mapper_write      <= iom_mapper_write_i;
   iom_mapper_address    <= ios_address(1 downto 0);
   iom_mapper_writedata  <= ios_writedata;
+
+  -- IDE
+  mem_ide_read          <= mem_ide_read_i;
+  mem_ide_write         <= mem_ide_write_i;
+  mem_ide_address       <= mes_address(13 downto 0);
+  mem_ide_writedata     <= mes_writedata;
 
   -- FM-Pac
   mem_fmpac_read        <= mem_fmpac_read_i;
@@ -145,11 +164,11 @@ begin
   iom_fmpac_address     <= ios_address(0 downto 0);
   iom_fmpac_writedata   <= ios_writedata;
 
-  -- IDE
-  mem_ide_read          <= mem_ide_read_i;
-  mem_ide_write         <= mem_ide_write_i;
-  mem_ide_address       <= mes_address(13 downto 0);
-  mem_ide_writedata     <= mes_writedata;
+  -- SCC
+  mem_scc_read          <= mem_scc_read_i;
+  mem_scc_write         <= mem_scc_write_i;
+  mem_scc_address       <= mes_address(15 downto 0);
+  mem_scc_writedata     <= mes_writedata;
 
 
   --------------------------------------------------------------------
@@ -164,28 +183,28 @@ begin
   -- Slot expander
   --------------------------------------------------------------------
 
-  slot_expand_reg_x <= mes_writedata when mes_write = '1' and mes_address = x"ffff" else
+  slot_expand_reg_x <= mes_writedata when mes_write = '1' and mes_address(15 downto 0) = x"ffff" else
                        slot_expand_reg_r;
 
-  exp_select_i(0) <= '1' when (mes_address(15 downto 14) = "00" and slot_expand_reg_r(1 downto 0) = "00") else
-                     '1' when (mes_address(15 downto 14) = "01" and slot_expand_reg_r(3 downto 2) = "00") else
-                     '1' when (mes_address(15 downto 14) = "10" and slot_expand_reg_r(5 downto 4) = "00") else
-                     '1' when (mes_address(15 downto 14) = "11" and slot_expand_reg_r(7 downto 6) = "00") else '0';
+  exp_select_i(0) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "00") else
+                     '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "00") else
+                     '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "00") else
+                     '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "00") else '0';
 
-  exp_select_i(1) <= '1' when (mes_address(15 downto 14) = "00" and slot_expand_reg_r(1 downto 0) = "01") else
-                     '1' when (mes_address(15 downto 14) = "01" and slot_expand_reg_r(3 downto 2) = "01") else
-                     '1' when (mes_address(15 downto 14) = "10" and slot_expand_reg_r(5 downto 4) = "01") else
-                     '1' when (mes_address(15 downto 14) = "11" and slot_expand_reg_r(7 downto 6) = "01") else '0';
+  exp_select_i(1) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "01") else
+                     '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "01") else
+                     '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "01") else
+                     '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "01") else '0';
 
-  exp_select_i(2) <= '1' when (mes_address(15 downto 14) = "00" and slot_expand_reg_r(1 downto 0) = "10") else
-                     '1' when (mes_address(15 downto 14) = "01" and slot_expand_reg_r(3 downto 2) = "10") else
-                     '1' when (mes_address(15 downto 14) = "10" and slot_expand_reg_r(5 downto 4) = "10") else
-                     '1' when (mes_address(15 downto 14) = "11" and slot_expand_reg_r(7 downto 6) = "10") else '0';
+  exp_select_i(2) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "10") else
+                     '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "10") else
+                     '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "10") else
+                     '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "10") else '0';
 
-  exp_select_i(3) <= '1' when (mes_address(15 downto 14) = "00" and slot_expand_reg_r(1 downto 0) = "11") else
-                     '1' when (mes_address(15 downto 14) = "01" and slot_expand_reg_r(3 downto 2) = "11") else
-                     '1' when (mes_address(15 downto 14) = "10" and slot_expand_reg_r(5 downto 4) = "11") else
-                     '1' when (mes_address(15 downto 14) = "11" and slot_expand_reg_r(7 downto 6) = "11") else '0';
+  exp_select_i(3) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "11") else
+                     '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "11") else
+                     '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "11") else
+                     '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "11") else '0';
 
 
   --------------------------------------------------------------------
@@ -195,7 +214,7 @@ begin
   -- Address decoding
   mem_chipselect : process(all)
   begin
-    if (mes_address = x"ffff") then
+    if (mes_address(16) = '0' and mes_address(15 downto 0) = x"ffff") then
       mem_cs_i <= MEM_CS_EXTREG;
     elsif (exp_select_i(0) = '1' and enable_mapper = '1') then
       mem_cs_i <= MEM_CS_MAPPER;
@@ -203,6 +222,10 @@ begin
       mem_cs_i <= MEM_CS_IDE;
     elsif (exp_select_i(2) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac = '1') then
       mem_cs_i <= MEM_CS_FMPAC;
+    --elsif (exp_select_i(3) = '1' and (mes_address(15 downto 14) = "01" or mes_address(15 downto 14) = "10") and enable_scc = '1') then
+    --  mem_cs_i <= MEM_CS_SCC;
+    elsif ((mes_address(16 downto 14) = "101" or mes_address(16 downto 14) = "110") and enable_scc = '1') then
+      mem_cs_i <= MEM_CS_SCC;
     else
       mem_cs_i <= MEM_CS_NONE;
     end if;
@@ -215,18 +238,22 @@ begin
     mem_mapper_read_i <= '0';
     mem_fmpac_read_i <= '0';
     mem_ide_read_i <= '0';
+    mem_scc_read_i <= '0';
 
     -- Read signals and waitrequest
     case (mem_cs_i) is
       when MEM_CS_MAPPER =>
         mem_mapper_read_i <= mes_read;
         mes_read_waitrequest_i <= mem_mapper_waitrequest;
-      when MEM_CS_FMPAC =>
-        mem_fmpac_read_i <= mes_read;
-        mes_read_waitrequest_i <= mem_fmpac_waitrequest;
       when MEM_CS_IDE =>
         mem_ide_read_i <= mes_read;
         mes_read_waitrequest_i <= mem_ide_waitrequest;
+      when MEM_CS_FMPAC =>
+        mem_fmpac_read_i <= mes_read;
+        mes_read_waitrequest_i <= mem_fmpac_waitrequest;
+      when MEM_CS_SCC =>
+        mem_scc_read_i <= mes_read;
+        mes_read_waitrequest_i <= mem_scc_waitrequest;
       when others =>
         mes_read_waitrequest_i <= '0';
     end case;
@@ -256,17 +283,23 @@ begin
           mes_readdatavalid_x <= '1';
           mes_readdata_x <= '1' & mem_mapper_readdata;
         end if;
+      when MEM_CS_IDE =>
+        -- IDE
+        if (mem_ide_readdatavalid = '1') then
+          mes_readdatavalid_x <= '1';
+          mes_readdata_x <= '1' & mem_ide_readdata;
+        end if;
       when MEM_CS_FMPAC =>
         -- FM-Pac
         if (mem_fmpac_readdatavalid = '1') then
           mes_readdatavalid_x <= '1';
           mes_readdata_x <= '1' & mem_fmpac_readdata;
         end if;
-      when MEM_CS_IDE =>
-        -- IDE
-        if (mem_ide_readdatavalid = '1') then
+      when MEM_CS_SCC =>
+        -- SCC
+        if (mem_scc_readdatavalid = '1') then
           mes_readdatavalid_x <= '1';
-          mes_readdata_x <= '1' & mem_ide_readdata;
+          mes_readdata_x <= '1' & mem_scc_readdata;
         end if;
       when others =>
     end case;
@@ -281,20 +314,25 @@ begin
     mem_mapper_write_i <= '0';
     mem_fmpac_write_i <= '0';
     mem_ide_write_i <= '0';
+    mem_scc_write_i <= '0';
 
     -- create write signals
     if (mes_write = '1' and mem_cs_i = MEM_CS_MAPPER) then
       -- Memory mapper
       mem_mapper_write_i <= '1';
       mes_write_waitrequest_i <= mem_mapper_waitrequest;
-    elsif (mes_write = '1' and mem_cs_i = MEM_CS_FMPAC) then
-      -- FM-Pack
-      mem_fmpac_write_i <= '1';
-      mes_write_waitrequest_i <= mem_fmpac_waitrequest;
     elsif (mes_write = '1' and mem_cs_i = MEM_CS_IDE) then
       -- IDE
       mem_ide_write_i <= '1';
       mes_write_waitrequest_i <= mem_ide_waitrequest;
+    elsif (mes_write = '1' and mem_cs_i = MEM_CS_FMPAC) then
+      -- FM-Pack
+      mem_fmpac_write_i <= '1';
+      mes_write_waitrequest_i <= mem_fmpac_waitrequest;
+    elsif (mes_write = '1' and mem_cs_i = MEM_CS_SCC) then
+      -- SCC
+      mem_scc_write_i <= '1';
+      mes_write_waitrequest_i <= mem_scc_waitrequest;
     end if;
   end process;
 

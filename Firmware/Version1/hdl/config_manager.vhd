@@ -25,7 +25,8 @@ entity config_manager is
     -- Functions
     enable_ide                : out std_logic;
     enable_mapper             : out std_logic;
-    enable_fmpac              : out std_logic
+    enable_fmpac              : out std_logic;
+    enable_scc                : out std_logic
 );
 end config_manager;
 
@@ -53,6 +54,7 @@ begin
   enable_ide    <= enable_ide_r;
   enable_mapper <= enable_mapper_r;
   enable_fmpac  <= enable_fmpac_r;
+  enable_scc <= '1'; -- Always enabled for now
 
   --------------------------------------------------------------------
   -- Config

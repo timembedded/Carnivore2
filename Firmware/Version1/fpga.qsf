@@ -301,4 +301,6 @@ set_global_assignment -name VHDL_FILE hdl/memory_mapper.vhd
 set_global_assignment -name VHDL_FILE hdl/audio/waveform_generator.vhd
 set_global_assignment -name VHDL_FILE hdl/keyboard_sniffer.vhd
 set_global_assignment -name VHDL_FILE hdl/config_manager.vhd
+set_global_assignment -name VHDL_FILE hdl/scc_wave.vhd
+set_global_assignment -name VHDL_FILE hdl/scc.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
