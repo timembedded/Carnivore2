@@ -81,7 +81,16 @@ entity address_decoding is
     mem_scc_writedata         : out std_logic_vector(7 downto 0);
     mem_scc_readdata          : in std_logic_vector(7 downto 0);
     mem_scc_readdatavalid     : in std_logic;
-    mem_scc_waitrequest       : in std_logic
+    mem_scc_waitrequest       : in std_logic;
+
+    -- Mega-ram mapper
+    iom_mega_read             : out std_logic;
+    iom_mega_write            : out std_logic;
+    iom_mega_address          : out std_logic_vector(1 downto 0);
+    iom_mega_writedata        : out std_logic_vector(7 downto 0);
+    iom_mega_readdata         : in std_logic_vector(7 downto 0);
+    iom_mega_readdatavalid    : in std_logic;
+    iom_mega_waitrequest      : in std_logic
 );
 end address_decoding;
 
@@ -94,7 +103,7 @@ architecture rtl of address_decoding is
 
   -- Chip select
   type mem_cs_t is (MEM_CS_NONE, MEM_CS_EXTREG, MEM_CS_MAPPER, MEM_CS_IDE, MEM_CS_FMPAC, MEM_CS_SCC);
-  type iom_cs_t is (IOM_CS_NONE, IOM_CS_MAPPER, IOM_CS_FMPAC, IOM_CS_TESTREG);
+  type iom_cs_t is (IOM_CS_NONE, IOM_CS_MAPPER, IOM_CS_FMPAC, IOM_CS_MEGA, IOM_CS_TESTREG);
   signal mem_cs_i, mem_cs_read_x, mem_cs_read_r : mem_cs_t;
   signal iom_cs_i, iom_cs_read_x, iom_cs_read_r : iom_cs_t;
 
@@ -110,6 +119,8 @@ architecture rtl of address_decoding is
   signal mem_fmpac_read_i                         : std_logic;
   signal mem_fmpac_write_i                        : std_logic;
   signal iom_fmpac_write_i                        : std_logic;
+  signal iom_mega_read_i                          : std_logic;
+  signal iom_mega_write_i                         : std_logic;
 
   signal mem_scc_read_i                           : std_logic;
   signal mem_scc_write_i                          : std_logic;
@@ -170,6 +181,12 @@ begin
   mem_scc_address       <= mes_address(15 downto 0);
   mem_scc_writedata     <= mes_writedata;
 
+  -- Mega mapper
+  iom_mega_read         <= iom_mega_read_i;
+  iom_mega_write        <= iom_mega_write_i;
+  iom_mega_address      <= ios_address(1 downto 0);
+  iom_mega_writedata    <= ios_writedata;
+
 
   --------------------------------------------------------------------
   -- Test register
@@ -216,16 +233,16 @@ begin
   begin
     if (mes_address(16) = '0' and mes_address(15 downto 0) = x"ffff") then
       mem_cs_i <= MEM_CS_EXTREG;
-    elsif (exp_select_i(0) = '1' and enable_mapper = '1') then
-      mem_cs_i <= MEM_CS_MAPPER;
+    elsif (exp_select_i(0) = '1' and enable_scc = '1') then
+      mem_cs_i <= MEM_CS_SCC;
+    --elsif (mes_address(16) = '1' and enable_scc = '1') then
+    --  mem_cs_i <= MEM_CS_SCC;
     elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01" and enable_ide = '1') then
       mem_cs_i <= MEM_CS_IDE;
-    elsif (exp_select_i(2) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac = '1') then
+    elsif (exp_select_i(2) = '1' and enable_mapper = '1') then
+      mem_cs_i <= MEM_CS_MAPPER;
+    elsif (exp_select_i(3) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac = '1') then
       mem_cs_i <= MEM_CS_FMPAC;
-    --elsif (exp_select_i(3) = '1' and (mes_address(15 downto 14) = "01" or mes_address(15 downto 14) = "10") and enable_scc = '1') then
-    --  mem_cs_i <= MEM_CS_SCC;
-    elsif ((mes_address(16 downto 14) = "101" or mes_address(16 downto 14) = "110") and enable_scc = '1') then
-      mem_cs_i <= MEM_CS_SCC;
     else
       mem_cs_i <= MEM_CS_NONE;
     end if;
@@ -350,6 +367,9 @@ begin
     elsif (ios_address(7 downto 1) = "0111"&"110" and enable_fmpac = '1') then
       -- 0x7C - 0x7D
       iom_cs_i <= IOM_CS_FMPAC;
+    elsif (ios_address(7 downto 2) = "1111"&"00") then
+      -- 0xF0 - 0xF3
+      iom_cs_i <= IOM_CS_MEGA;
     elsif (ios_address = x"52") then
       -- 0x52
       iom_cs_i <= IOM_CS_TESTREG;
@@ -363,6 +383,7 @@ begin
   begin
     -- Read signals
     iom_mapper_read_i <= '0';
+    iom_mega_read_i <= '0';
 
     -- I/O read signals and waitrequest
     case (iom_cs_i) is
@@ -371,6 +392,9 @@ begin
         ios_read_waitrequest_i <= iom_mapper_waitrequest;
       when IOM_CS_FMPAC =>
         ios_read_waitrequest_i <= iom_fmpac_waitrequest;
+      when IOM_CS_MEGA =>
+        iom_mega_read_i <= '1';
+        ios_read_waitrequest_i <= iom_mega_waitrequest;
       when others =>
         ios_read_waitrequest_i <= '0';
     end case;
@@ -394,6 +418,10 @@ begin
         -- Memory mapper
         ios_readdata_x <= '1' & iom_mapper_readdata;
         ios_readdatavalid_x <= iom_mapper_readdatavalid;
+      when IOM_CS_MEGA =>
+        -- Mega-ram mapper
+        ios_readdata_x <= '1' & iom_mega_readdata;
+        ios_readdatavalid_x <= iom_mega_readdatavalid;
       when IOM_CS_TESTREG =>
         -- Test register
         ios_readdata_x <= '1' & test_reg_r;
@@ -410,6 +438,7 @@ begin
     -- write signals
     iom_mapper_write_i <= '0';
     iom_fmpac_write_i <= '0';
+    iom_mega_write_i <= '0';
 
     -- create write signals
     if (ios_write = '1' and iom_cs_i = IOM_CS_MAPPER) then
@@ -420,6 +449,10 @@ begin
       -- 0x7C - 0x7D
       iom_fmpac_write_i <= '1';
       ios_write_waitrequest_i <= iom_fmpac_waitrequest;
+    elsif (ios_write = '1' and iom_cs_i = IOM_CS_MEGA) then
+      -- 0xF0 - 0xF3
+      iom_mega_write_i <= '1';
+      ios_write_waitrequest_i <= iom_mega_waitrequest;
     end if;
   end process;
 

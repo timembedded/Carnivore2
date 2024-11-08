@@ -132,21 +132,33 @@ architecture rtl of top is
   signal key_graph_i                : std_logic;
   signal key_code_i                 : std_logic;
 
-  -- Synchronous reset
+  -- Synchronous resets
   signal slot_reset_i               : std_logic;
+  signal soft_reset_i               : std_logic;
+
+  -- Misc card
+  signal our_slot_i                 : std_logic_vector(1 downto 0);
+  signal enable_shadow_ram_i        : std_logic;
+
+  -- SCC mode registers
+  signal EseScc_MA19_i              : std_logic; -- EseScc_xxx was SccModeA
+  signal EseScc_MA20_i              : std_logic;
+  signal SccPlus_Enable_i           : std_logic; -- SccPlus_xxx was SccModeB
+  signal SccPlus_AllRam_i           : std_logic;
+  signal SccPlus_B0Ram_i            : std_logic;
+  signal SccPlus_B1Ram_i            : std_logic;
+  signal SccPlus_B2Ram_i            : std_logic;
 
   -- Functions
   signal beep_i                     : std_logic;
-  signal enable_ide_i               : std_logic;
-  signal enable_mapper_i            : std_logic;
-  signal enable_fmpac_i             : std_logic;
-  signal enable_scc_i               : std_logic;
+  signal enable_ide_a_i, enable_ide_b_i       : std_logic;
+  signal enable_mapper_a_i, enable_mapper_b_i : std_logic;
+  signal enable_fmpac_a_i, enable_fmpac_b_i   : std_logic;
+  signal enable_scc_a_i, enable_scc_b_i       : std_logic;
 
   -- Flash avalon slave port
   signal mem_flash_read_i           : std_logic;
-  signal mem_flash_write_i          : std_logic;
   signal mem_flash_address_i        : std_logic_vector(22 downto 0);
-  signal mem_flash_writedata_i      : std_logic_vector(7 downto 0);
   signal mem_flash_readdata_i       : std_logic_vector(7 downto 0);
   signal mem_flash_readdatavalid_i  : std_logic;
   signal mem_flash_waitrequest_i    : std_logic;
@@ -159,6 +171,15 @@ architecture rtl of top is
   signal mem_ram_readdata_i         : std_logic_vector(7 downto 0);
   signal mem_ram_readdatavalid_i    : std_logic;
   signal mem_ram_waitrequest_i      : std_logic;
+
+  -- Flash+RAM avalon slave port
+  signal mem_flashram_read_i          : std_logic;
+  signal mem_flashram_write_i         : std_logic;
+  signal mem_flashram_address_i       : std_logic_vector(23 downto 0);
+  signal mem_flashram_writedata_i     : std_logic_vector(7 downto 0);
+  signal mem_flashram_readdata_i      : std_logic_vector(7 downto 0);
+  signal mem_flashram_readdatavalid_i : std_logic;
+  signal mem_flashram_waitrequest_i   : std_logic;
 
   -- Avalon bus: Memory mapper
   signal mem_mapper_read_i          : std_logic;
@@ -219,8 +240,13 @@ architecture rtl of top is
   signal mem_scc_readdatavalid_i    : std_logic;
   signal mem_scc_waitrequest_i      : std_logic;
   -- ROM
-  signal mem_rommap_read_i          : std_logic;
-  signal mem_rommap_readdatavalid_i : std_logic;
+  signal mem_mega_read_i            : std_logic;
+  signal mem_mega_write_i           : std_logic;
+  signal mem_mega_address_i         : std_logic_vector(15 downto 0);
+  signal mem_mega_writedata_i       : std_logic_vector(7 downto 0);
+  signal mem_mega_readdata_i        : std_logic_vector(7 downto 0);
+  signal mem_mega_readdatavalid_i   : std_logic;
+  signal mem_mega_waitrequest_i     : std_logic;
   -- Audio
   signal scc_amp_i                  : std_logic_vector(10 downto 0);
 
@@ -238,6 +264,15 @@ architecture rtl of top is
   signal rom_ide_readdata_i         : std_logic_vector(7 downto 0);
   signal rom_ide_readdatavalid_i    : std_logic;
   signal rom_ide_waitrequest_i      : std_logic;
+
+  -- Mega mapper
+  signal iom_mega_read_i            : std_logic;
+  signal iom_mega_write_i           : std_logic;
+  signal iom_mega_address_i         : std_logic_vector(1 downto 0);
+  signal iom_mega_writedata_i       : std_logic_vector(7 downto 0);
+  signal iom_mega_readdata_i        : std_logic_vector(7 downto 0);
+  signal iom_mega_readdatavalid_i   : std_logic;
+  signal iom_mega_waitrequest_i     : std_logic;
 
   -- Audio
   signal audio_ack_i                : std_logic;
@@ -259,11 +294,6 @@ begin
   dac_xsmt <= '1';
   dac_flt  <= '0';
   dac_demp <= '0';
-
-  -- EEPROM
-  EECS <= '1';
-  EECK <= '0';
-  EEDI <= '0';
 
   -- Debug
   J2_2 <= count(0);
@@ -327,7 +357,7 @@ begin
   end process;
 
   --------------------------------------------------------------------
-  -- Flash interface
+  -- Flash/RAM interface
   --------------------------------------------------------------------
 
   i_flash_ram_interface : entity work.flash_ram_interface(rtl)
@@ -338,22 +368,31 @@ begin
     slot_reset        => slot_reset_i,
 
     -- avalon slave ports for flash
-    mes_flash_read           => mem_flash_read_i,
-    mes_flash_write          => mem_flash_write_i,
-    mes_flash_address        => mem_flash_address_i,
-    mes_flash_writedata      => mem_flash_writedata_i,
-    mes_flash_readdata       => mem_flash_readdata_i,
-    mes_flash_readdatavalid  => mem_flash_readdatavalid_i,
-    mes_flash_waitrequest    => mem_flash_waitrequest_i,
+    mes_port_a_read           => mem_flash_read_i,
+    mes_port_a_write          => '0',
+    mes_port_a_address        => enable_shadow_ram_i & mem_flash_address_i,
+    mes_port_a_writedata      => (others => '0'),
+    mes_port_a_readdata       => mem_flash_readdata_i,
+    mes_port_a_readdatavalid  => mem_flash_readdatavalid_i,
+    mes_port_a_waitrequest    => mem_flash_waitrequest_i,
 
     -- avalon slave ports for ram
-    mes_ram_read             => mem_ram_read_i,
-    mes_ram_write            => mem_ram_write_i,
-    mes_ram_address          => mem_ram_address_i,
-    mes_ram_writedata        => mem_ram_writedata_i,
-    mes_ram_readdata         => mem_ram_readdata_i,
-    mes_ram_readdatavalid    => mem_ram_readdatavalid_i,
-    mes_ram_waitrequest      => mem_ram_waitrequest_i,
+    mes_port_b_read           => mem_ram_read_i,
+    mes_port_b_write          => mem_ram_write_i,
+    mes_port_b_address        => "100" & mem_ram_address_i,
+    mes_port_b_writedata      => mem_ram_writedata_i,
+    mes_port_b_readdata       => mem_ram_readdata_i,
+    mes_port_b_readdatavalid  => mem_ram_readdatavalid_i,
+    mes_port_b_waitrequest    => mem_ram_waitrequest_i,
+
+    -- avalon slave ports for flash+ram
+    mes_port_c_read           => mem_flashram_read_i,
+    mes_port_c_write          => mem_flashram_write_i,
+    mes_port_c_address        => mem_flashram_address_i,
+    mes_port_c_writedata      => mem_flashram_writedata_i,
+    mes_port_c_readdata       => mem_flashram_readdata_i,
+    mes_port_c_readdatavalid  => mem_flashram_readdatavalid_i,
+    mes_port_c_waitrequest    => mem_flashram_waitrequest_i,
 
     -- Parallel flash interface
     pFlAdr    => pFlAdr,
@@ -378,9 +417,9 @@ begin
 
     -- Flash memory
     mem_flash_read            => mem_flash_read_i,
-    mem_flash_write           => mem_flash_write_i,
+    mem_flash_write           => open,
     mem_flash_address         => mem_flash_address_i,
-    mem_flash_writedata       => mem_flash_writedata_i,
+    mem_flash_writedata       => open,
     mem_flash_readdata        => mem_flash_readdata_i,
     mem_flash_readdatavalid   => mem_flash_readdatavalid_i,
     mem_flash_waitrequest     => mem_flash_waitrequest_i,
@@ -451,8 +490,12 @@ begin
     slt_m1_n          => pSltM1_n,
     slt_merq_n        => pSltMerq_n,
 
-    -- Synchronous reset
+    -- Synchronous resets
     slot_reset        => slot_reset_i,
+    soft_reset        => soft_reset_i,
+
+    -- Misc
+    our_slot          => our_slot_i,
 
     -- avalon memory master
     mem_address       => mem_address_i,
@@ -523,10 +566,10 @@ begin
     beep              => beep_i,
 
     -- Functions
-    enable_ide        => enable_ide_i,
-    enable_mapper     => enable_mapper_i,
-    enable_fmpac      => enable_fmpac_i,
-    enable_scc        => enable_scc_i
+    enable_ide        => enable_ide_a_i,
+    enable_mapper     => enable_mapper_a_i,
+    enable_fmpac      => enable_fmpac_a_i,
+    enable_scc        => enable_scc_a_i
   );
 
   --------------------------------------------------------------------
@@ -559,10 +602,10 @@ begin
 
     -- Functions
     test_reg          => open,
-    enable_ide        => enable_ide_i,
-    enable_mapper     => enable_mapper_i,
-    enable_fmpac      => enable_fmpac_i,
-    enable_scc        => enable_scc_i,
+    enable_ide        => enable_ide_a_i and enable_ide_b_i,
+    enable_mapper     => enable_mapper_a_i and enable_mapper_b_i,
+    enable_fmpac      => enable_fmpac_a_i and enable_fmpac_b_i,
+    enable_scc        => '1',
 
     -- Memory mapper
     mem_mapper_read          => mem_mapper_read_i,
@@ -609,7 +652,16 @@ begin
     mem_scc_writedata        => mem_scc_writedata_i,
     mem_scc_readdata         => mem_scc_readdata_i,
     mem_scc_readdatavalid    => mem_scc_readdatavalid_i,
-    mem_scc_waitrequest      => mem_scc_waitrequest_i
+    mem_scc_waitrequest      => mem_scc_waitrequest_i,
+
+    -- Mega mapper (I/O #f0)
+    iom_mega_read            => iom_mega_read_i,
+    iom_mega_write           => iom_mega_write_i,
+    iom_mega_address         => iom_mega_address_i,
+    iom_mega_writedata       => iom_mega_writedata_i,
+    iom_mega_readdata        => iom_mega_readdata_i,
+    iom_mega_readdatavalid   => iom_mega_readdatavalid_i,
+    iom_mega_waitrequest     => iom_mega_waitrequest_i
   );
 
   ----------------------------------------------------------------
@@ -700,7 +752,7 @@ begin
     clkena_3m58           => clkena_3m58_i,
 
     -- Configuration
-    SccEna                => enable_scc_i,
+    SccEna                => enable_scc_a_i and enable_scc_b_i,
 
     -- Avalon slave ports
     mes_scc_read          => mem_scc_read_i,
@@ -711,19 +763,92 @@ begin
     mes_scc_readdatavalid => mem_scc_readdatavalid_i,
     mes_scc_waitrequest   => mem_scc_waitrequest_i,
     -- avalon master port
-    mem_scc_read          => mem_rommap_read_i,
-    mem_scc_write         => open,
-    mem_scc_address       => open,
-    mem_scc_writedata     => open,
-    mem_scc_readdata      => x"ff",
-    mem_scc_readdatavalid => mem_rommap_readdatavalid_i,
-    mem_scc_waitrequest   => '0',
+    mem_scc_read          => mem_mega_read_i,
+    mem_scc_write         => mem_mega_write_i,
+    mem_scc_address       => mem_mega_address_i,
+    mem_scc_writedata     => mem_mega_writedata_i,
+    mem_scc_readdata      => mem_mega_readdata_i,
+    mem_scc_readdatavalid => mem_mega_readdatavalid_i,
+    mem_scc_waitrequest   => mem_mega_waitrequest_i,
+
+    -- SCC mode registers
+    EseScc_MA19            => EseScc_MA19_i,
+    EseScc_MA20            => EseScc_MA20_i,
+    SccPlus_Enable         => SccPlus_Enable_i,
+    SccPlus_AllRam         => SccPlus_AllRam_i,
+    SccPlus_B0Ram          => SccPlus_B0Ram_i,
+    SccPlus_B1Ram          => SccPlus_B1Ram_i,
+    SccPlus_B2Ram          => SccPlus_B2Ram_i,
 
     -- Audio output
     SccAmp    => scc_amp_i
   );
 
-  mem_rommap_readdatavalid_i <= mem_rommap_read_i when rising_edge(sysclk);
+
+  ----------------------------------------------------------------
+  -- mega-ram like mapper
+  ----------------------------------------------------------------
+
+  i_mega_ram : entity work.mega_ram(rtl)
+  port map
+  (
+    -- clock and reset
+    clock                  => sysclk,
+    slot_reset             => slot_reset_i,
+    soft_reset             => soft_reset_i,
+
+    -- Config
+    -- Functions
+    enable_ide             => enable_ide_b_i,
+    enable_mapper          => enable_mapper_b_i,
+    enable_fmpac           => enable_fmpac_b_i,
+    enable_scc             => enable_scc_b_i,
+
+    -- EEPROM
+    EECS                   => EECS,
+    EECK                   => EECK,
+    EEDI                   => EEDI,
+    EEDO                   => EEDO,
+
+    -- Misc
+    our_slot               => our_slot_i,
+    enable_shadow_ram      => enable_shadow_ram_i,
+
+    -- SCC mode registers
+    EseScc_MA19            => EseScc_MA19_i,
+    EseScc_MA20            => EseScc_MA20_i,
+    SccPlus_Enable         => SccPlus_Enable_i,
+    SccPlus_AllRam         => SccPlus_AllRam_i,
+    SccPlus_B0Ram          => SccPlus_B0Ram_i,
+    SccPlus_B1Ram          => SccPlus_B1Ram_i,
+    SccPlus_B2Ram          => SccPlus_B2Ram_i,
+
+    -- avalon slave port
+    mes_mega_read          => mem_mega_read_i,
+    mes_mega_write         => mem_mega_write_i,
+    mes_mega_address       => mem_mega_address_i,
+    mes_mega_writedata     => mem_mega_writedata_i,
+    mes_mega_readdata      => mem_mega_readdata_i,
+    mes_mega_readdatavalid => mem_mega_readdatavalid_i,
+    mes_mega_waitrequest   => mem_mega_waitrequest_i,
+    -- 0xf0
+    ios_mega_read          => iom_mega_read_i,
+    ios_mega_write         => iom_mega_write_i,
+    ios_mega_address       => iom_mega_address_i,
+    ios_mega_writedata     => iom_mega_writedata_i,
+    ios_mega_readdata      => iom_mega_readdata_i,
+    ios_mega_readdatavalid => iom_mega_readdatavalid_i,
+    ios_mega_waitrequest   => iom_mega_waitrequest_i,
+
+    -- avalon master port
+    mem_mega_read          => mem_flashram_read_i,
+    mem_mega_write         => mem_flashram_write_i,
+    mem_mega_address       => mem_flashram_address_i,
+    mem_mega_writedata     => mem_flashram_writedata_i,
+    mem_mega_readdata      => mem_flashram_readdata_i,
+    mem_mega_readdatavalid => mem_flashram_readdatavalid_i,
+    mem_mega_waitrequest   => mem_flashram_waitrequest_i
+  );
 
   ----------------------------------------------------------------
   -- IDE

@@ -33,30 +33,34 @@ entity card_bus_slave is
 
     -- Synchronous reset output
     slot_reset        : out std_logic;
+    soft_reset        : out std_logic;
+
+    -- Misc
+    our_slot          : out std_logic_vector(1 downto 0);
 
     -- avalon memory master
-    mem_address        : out std_logic_vector(16 downto 0);
-    mem_write          : out std_logic;
-    mem_writedata      : out std_logic_vector(7 downto 0);
-    mem_read           : out std_logic;
-    mem_readdata       : in std_logic_vector(8 downto 0);
-    mem_readdatavalid  : in std_logic;
-    mem_waitrequest    : in std_logic;
+    mem_address       : out std_logic_vector(16 downto 0);
+    mem_write         : out std_logic;
+    mem_writedata     : out std_logic_vector(7 downto 0);
+    mem_read          : out std_logic;
+    mem_readdata      : in std_logic_vector(8 downto 0);
+    mem_readdatavalid : in std_logic;
+    mem_waitrequest   : in std_logic;
 
     -- avalon io master
-    iom_address        : out std_logic_vector(7 downto 0);
-    iom_write          : out std_logic;
-    iom_writedata      : out std_logic_vector(7 downto 0);
-    iom_read           : out std_logic;
-    iom_readdata       : in std_logic_vector(8 downto 0);
-    iom_readdatavalid  : in std_logic;
-    iom_waitrequest    : in std_logic;
+    iom_address       : out std_logic_vector(7 downto 0);
+    iom_write         : out std_logic;
+    iom_writedata     : out std_logic_vector(7 downto 0);
+    iom_read          : out std_logic;
+    iom_readdata      : in std_logic_vector(8 downto 0);
+    iom_readdatavalid : in std_logic;
+    iom_waitrequest   : in std_logic;
 
     -- io sniffer
-    ism_address        : out std_logic_vector(8 downto 0); -- 0x00-0xff = writes, 0x100-0x1ff = reads
-    ism_write          : out std_logic;
-    ism_writedata      : out std_logic_vector(7 downto 0);
-    ism_waitrequest    : in std_logic
+    ism_address       : out std_logic_vector(8 downto 0); -- 0x00-0xff = writes, 0x100-0x1ff = reads
+    ism_write         : out std_logic;
+    ism_writedata     : out std_logic_vector(7 downto 0);
+    ism_waitrequest   : in std_logic
   );
 end card_bus_slave;
 
@@ -86,12 +90,17 @@ architecture rtl of card_bus_slave is
   signal iord_s, iord_r                   : std_logic;
   signal iowr_s, iowr_r                   : std_logic;
 
-  -- Synchronous reset output
+  -- Soft reset detection
+  signal soft_rst_i, soft_rst_s, soft_rst_r, soft_rst_d : std_logic;
+
+  -- Synchronous reset outputs
   signal slot_reset_n_x, slot_reset_n_r   : std_logic;
   signal slot_readdata_x, slot_readdata_r : std_logic_vector(8 downto 0);
+  signal soft_reset_x, soft_reset_r       : std_logic;
 
   -- Other slot
   signal slot_reg_x, slot_reg_r           : std_logic_vector(7 downto 0);
+  signal our_slot_x, our_slot_r           : std_logic_vector(1 downto 0);
   signal other_slot_x, other_slot_r       : integer range 0 to 2;
   signal sltsl1_i, sltsl2_i, sltslx_i     : std_logic;
 
@@ -116,11 +125,13 @@ begin
 
   -- Reset
   slot_reset <= not slot_reset_n_r;
+  soft_reset <= soft_reset_r;
 
   -- TODO: Implement wait-state generation
   slt_wait_n <= 'Z';  -- For now never generate wait states
 
   -- Asynchronous signals
+  soft_rst_i <= '1' when slt_addr(15 downto 0) = x"0000" and slt_merq_n = '0' and slt_m1_n = '0' and slt_rd_n = '0' else '0';
   memrd_i <= '1' when slt_sltsl_n = '0' and slt_merq_n = '0' and slt_rd_n = '0' else '0';
   memwr_i <= '1' when slt_sltsl_n = '0' and slt_merq_n = '0' and slt_wr_n = '0' else '0';
   memxrd_i <= '1' when sltslx_i = '1' and slt_merq_n = '0' and slt_rd_n = '0' else '0';
@@ -131,6 +142,9 @@ begin
   -- Synchronizers
   slt_reset_n_s <= slt_reset_n when rising_edge(clock);
   slt_reset_n_r <= slt_reset_n_s when rising_edge(clock);
+  soft_rst_s <= soft_rst_i when rising_edge(clock);
+  soft_rst_r <= soft_rst_s when rising_edge(clock);
+  soft_rst_d <= soft_rst_r when rising_edge(clock);
   memrd_s <= memrd_i when rising_edge(clock);
   memrd_r <= memrd_s when rising_edge(clock);
   memrd_d <= memrd_r when rising_edge(clock);
@@ -145,6 +159,9 @@ begin
   iord_r <= iord_s when rising_edge(clock);
   iowr_s <= iowr_i when rising_edge(clock);
   iowr_r <= iowr_s when rising_edge(clock);
+
+  -- Misc
+  our_slot <= our_slot_r;
 
   -- Avalon memory master
   mem_address   <= mem_address_r;
@@ -170,6 +187,7 @@ begin
 
     slot_reset_n_x <= '1';
     slot_readdata_x <= slot_readdata_r;
+    soft_reset_x <= '0';
 
     mem_read_x <= '0';
     mem_write_x <= '0';
@@ -187,6 +205,10 @@ begin
       slt_data <= slot_readdata_r(7 downto 0);
     else
       slt_data <= (others => 'Z');
+    end if;
+
+    if (soft_rst_d = '0' and soft_rst_r = '0') then
+      soft_reset_x <= '1';
     end if;
 
     case (state_r) is
@@ -318,6 +340,7 @@ begin
   begin
     slot_reg_x <= slot_reg_r;
     other_slot_x <= other_slot_r;
+    our_slot_x <= our_slot_r;
 
     if (iom_write_r = '1' and iom_address_r = x"A8") then
       slot_reg_x <= iom_writedata_r;
@@ -326,10 +349,13 @@ begin
     if ((memrd_r = '1' and memrd_d = '0') or (memwr_r = '1' and memwr_d = '0')) then
       if (sltsl1_i = '1') then
         other_slot_x <= 2;
+        our_slot_x <= "01";
       elsif (sltsl2_i = '1') then
         other_slot_x <= 1;
+        our_slot_x <= "10";
       else
         other_slot_x <= 0;
+        our_slot_x <= "00";
       end if;
     end if;
 
@@ -390,8 +416,10 @@ begin
       state_r <= S_RESET;
       sniff_state_r <= SF_RESET;
       slot_reset_n_r <= '0';
+      soft_reset_r <= '0';
       slot_reg_r <= x"00";
       other_slot_r <= 0;
+      our_slot_r <= "00";
       slot_readdata_r(8) <= '0';
       mem_read_r <= '0';
       mem_write_r <= '0';
@@ -402,8 +430,10 @@ begin
       state_r <= state_x;
       sniff_state_r <= sniff_state_x;
       slot_reset_n_r <= slot_reset_n_x;
+      soft_reset_r <= soft_reset_x;
       slot_reg_r <= slot_reg_x;
       other_slot_r <= other_slot_x;
+      our_slot_r <= our_slot_x;
       slot_readdata_r(8) <= slot_readdata_x(8);
       mem_read_r <= mem_read_x;
       mem_write_r <= mem_write_x;
