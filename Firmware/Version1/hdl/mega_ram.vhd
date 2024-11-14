@@ -356,18 +356,34 @@ begin
         AddrM2     <= "0000000";
         AddrFR     <= "0000000";  -- shift  addr Flash Rom x 64κ
         aAddrFR    <= "0000000";
-        -- Disable all banks by default
-        aR1 <= (x"00", x"00", x"00", x"08", x"00", x"00");
-        aR2 <= (x"00", x"00", x"00", x"08", x"00", x"00");
-        aR3 <= (x"00", x"00", x"00", x"08", x"00", x"00");
-        aR4 <= (x"00", x"00", x"00", x"08", x"00", x"00");
-        -- Only enable bank 1
-        aR1.Mult    <= "10000101"; -- Enable page registers, 16kB pages
-        aR1.Mask    <= "11111000"; -- 0000h-07FFh + |
-        aR1.Addr    <= "01010000"; -- 5000h         | = 5000h-57FFh
-        aR1.Reg     <= "00000000"; -- Page 0 (Relative)
-        aR1.MaskR   <= "00000011"; -- Size "Cartrige" 4 Page ( 4 Page x 16 Kbyte )
-        aR1.AdrD    <= "01000000"; -- Bank Addr 4000h
+        -- Bank 1
+        aR1.Mask   <= "11111000"; -- 0000h-07FFh + |
+        aR1.Addr   <= "01010000"; -- 5000h         | = 5000h-57FFh
+        aR1.Reg    <= "00000000"; -- Page 0 (Relative)
+        aR1.Mult   <= "10000101"; -- Enable page registers, 16kB pages
+        aR1.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        aR1.AdrD   <= "01000000"; -- Bank Addr 4000h
+        -- Bank 2
+        aR2.Mask   <= "11111000"; -- 0000h-07FFh + |
+        aR2.Addr   <= "01110000"; -- 7000h         | = 7000h-77FFh
+        aR2.Reg    <= "00000001"; -- Page 1 (Relative)
+        aR2.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        aR2.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        aR2.AdrD   <= "01100000"; -- Bank Addr 6000h
+        -- Bank 3
+        aR3.Mask   <= "11111000"; -- 0000h-07FFh + |
+        aR3.Addr   <= "10010000"; -- 9000h         | = 9000h-97FFh
+        aR3.Reg    <= "00000010"; -- Page 2 (Relative)
+        aR3.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        aR3.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        aR3.AdrD   <= "10000000"; -- Bank Addr 8000h
+        -- Bank 4
+        aR4.Mask   <= "11111000"; -- 0000h-07FFh + |
+        aR4.Addr   <= "10110000"; -- B000h         | = B000h-B7FFh
+        aR4.Reg    <= "00000011"; -- Page 3 (Relative)
+        aR4.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        aR4.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        aR4.AdrD   <= "10100000"; -- Bank Addr A000h
         -- EEPROM
         EECS1 <= '0'; EECK1 <= '0'; EEDI1 <= '0';
       else
