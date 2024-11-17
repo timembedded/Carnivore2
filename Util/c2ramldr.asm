@@ -211,8 +211,6 @@ Stfp08: inc     a
 
 ; print warning for incompatible or uninit cartridge and exit
         print   M_Wnvc
-        ld      c,_INNOE
-        call    DOS
         jp      Exit
 
 Stfp30:
@@ -1761,7 +1759,7 @@ reconf_exit:
         ld      a,(TPASLOT2)
         ld      h,#80
         call    ENASLT
-        ld      de, Prg_Exit_S
+        ld      de, Exit_S
         ld      c,_STROUT
         call    DOS
         ld      c,_TERM0
@@ -2060,7 +2058,7 @@ Exit:
         xor     a
         ld      (CURSF),a
 
-        ld      de,EXIT_S
+        ld      de,Exit_S
         jp      termdos
 
 
@@ -2156,7 +2154,7 @@ BCLMI:
         jr      nz,BCLMI                ; Jump if Secondary Slot < 4
 BCLM2:  dec     b
         jp      p,BCLM                  ; Jump if Primary Slot < 0
-        ld      a,#FF
+        xor     a
         ld      (ix),a                  ; finish autodetect
 ; slot analise
         ld      ix,TRMSlt
@@ -2166,48 +2164,14 @@ BCLM2:  dec     b
 ; print slot table
         ld      (ERMSlt),a              ; save first detected slot
 
-        print   Findcrt_S
+        print   Findcrt_S               ; "Found Carnivore2 cartridge in slot(s): "
+        jr      BCTSF1                  ; No input when slot is known
 
-BCLT1:  ld      a,(ix)
-        cp      #FF
-        jr      z,BCLTE
-        and     3
-        add     a,"0"
-        ld      c,_CONOUT
-        ld      e,a
-        call    DOS                     ; print primary slot number
-        ld      a,(ix)
-        bit     7,a
-        jr      z,BCLT2                 ; not extended
-        rrc     a
-        rrc     a
-        and     3
-        add     a,"0"
-        ld      e,a
-        ld      c,_CONOUT
-        call    DOS                     ; print extended slot number
-BCLT2:  ld      e," "
-        ld      c,_CONOUT
-        call    DOS
-        inc     ix
-        jr      BCLT1
-
-BCLTE:
-        ld      a,(F_A)
-        or      a
-        jr      nz,BCTSF                ; Automatic flag (No input slot)
-        print   FindcrI_S
-        jp      BCLNE
 BCLNS:
-        print   NSFin_S
-        jp      BCLNE1
-BCLNE:
-        ld      a,(F_A)
-        or      a
-        jr      nz,BCTSF                ; Automatic flag (No input slot)
+        print   NSFin_S                 ; "Carnivore2 cartridge was not found ..."
 
 ; input slot number
-BCLNE1: ld      de,Binpsl
+        ld      de,Binpsl
         ld      c,_BUFIN
         call    DOS
         ld      a,(Binpsl+1)
@@ -2229,61 +2193,23 @@ BCLNE1: ld      de,Binpsl
         or      (hl)
         or      #80
         ld      (hl),a
-
 BCTSF:
-; test flash
-;*********************************
-        ld      a,(ERMSlt)
-;TestROM:
-        ld      (cslt),a
-        ld      h,#40
-        call    ENASLT
-        ld      a,#21
-        ld      (CardMDR),a
-        ld      hl,B1ON
-        ld      de,CardMDR+#06          ; set Bank1
-        ld      bc,6
-        ldir
-
-        ld      a,#95                   ; enable write  to bank (current #85)
-        ld      (R1Mult),a
-
-        di
-        ld      a,#AA
-        ld      (#4AAA),a
-        ld      a,#55
-        ld      (#4555),a
-        ld      a,#90
-        ld      (#4AAA),a               ; Autoselect Mode ON
-
-        ld      a,(#4000)
-        ld      (Det00),a               ; Manufacturer Code
-        ld      a,(#4002)
-        ld      (Det02),a               ; Device Code C1
-        ld      a,(#401C)
-        ld      (Det1C),a               ; Device Code C2
-        ld      a,(#401E)
-        ld      (Det1E),a               ; Device Code C3
-        ld      a,(#4006)
-        ld      (Det06),a               ; Extended Memory Block Verify Code
-
-        ld      a,#F0
-        ld      (#4000),a               ; Autoselect Mode OFF
-        ei
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT                  ; Select Main-RAM at bank 4000h~7FFFh
-
+        print   SltN_S
 
 ; Print result
-
-        print   SltN_S
-        ld      a,(cslt)
+BCTSF1:
+        ld      a,(ERMSlt)
         ld      b,a
         cp      #80
-        jp      nc,Trp01                ; exp slot number
+        jr      nc,Trp01
+        ; only primary
         and     3
-        jr      Trp02
+        add     a,"0"
+        ld      e,a
+        ld      c,_CONOUT
+        call    DOS
+        xor     a
+        ret
 Trp01:  rrc     a
         rrc     a
         and     %11000000
@@ -2295,95 +2221,7 @@ Trp01:  rrc     a
         rrc     a
 Trp02:  call    HEXOUT
         print   ONE_NL_S
-
-        ld      a,(F_V)                 ; verbose mode?
-        or      a
-        jr      z,Trp02a
-
-        print   MfC_S
-        ld      a,(Det00)
-        call    HEXOUT
-        print   ONE_NL_S
-
-        print   DVC_S
-        ld      a,(Det02)
-        call    HEXOUT
-        ld      e," "
-        ld      c,_CONOUT
-        call    DOS
-        ld      a,(Det1C)
-        call    HEXOUT
-        ld      e," "
-        ld      c,_CONOUT
-        call    DOS
-        ld      a,(Det1E)
-        call    HEXOUT
-        print   ONE_NL_S
-
-        print   EMB_S
-        ld      a,(Det06)
-        call    HEXOUT
-        print   ONE_NL_S
-
-Trp02a: ld      a,(Det00)
-        cp      Det00cp
-        jr      nz,Trp03
-        ld      a,(Det02)
-        cp      Det02cp
-        jr      nz,Trp03
-        print   M29W640
-        ld      e,"x"
-        ld      a,(Det1C)
-        cp      Det1Cc1
-        jr      z,Trp05
-        cp      Det1Cc2
-        jr      z,Trp08
-        jr      Trp04
-Trp05:  ld      a,(Det1E)
-        cp      Det1Ec1
-        jr      z,Trp06
-        cp      Det1Ec2
-        jr      z,Trp07
-        jr      Trp04
-Trp08:  ld      a,(Det1E)
-        cp      Det1Ec1
-        jr      z,Trp09
-        cp      Det1Ec2
-        jr      z,Trp10
-        jr      Trp04
-Trp06:  ld      e,"H"
-        jr      Trp04
-Trp07:  ld      e,"L"
-        jr      Trp04
-Trp09:  ld      e,"T"
-        jr      Trp04
-Trp10:  ld      e,"B"
-Trp04:  ld      c,_CONOUT
-        call    DOS
-        print   ONE_NL_S
-
-        ld      a,(Det06)
-        cp      80
-        jp      c,Trp11
-
-        ld      a,(F_V)                 ; verbose mode?
-        or      a
-        ret     z
-
-        print   EMBF_S
         xor     a
-        ret
-Trp11:
-        ld      a,(F_V)                 ; verbose mode?
-        or      a
-        ret     z
-
-        print   EMBC_S
-        xor     a
-        ret
-Trp03:
-        print   NOTD_S
-        scf
         ret
 
 
@@ -3261,26 +3099,12 @@ ERMSlt  db      1
 TRMSlt  db      #FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 Binpsl  db      2,0,"1",0
 slot:   db      1
-cslt:   db      0
-Det00:  db      0
-Det02:  db      0
-Det1C:  db      0
-Det1E:  db      0
-Det06:  db      0
-;Det04: ds      134
 DMAP:   db      0
 DMAPt:  db      1
 BMAP:   ds      2
-Dpoint: db      0,0,0
-StartBL:
-        ds      2
 C8k:    dw      0
 PreBnk: db      0
-EBlock0:
-        db      0
 EBlock: db      0
-strp:   db      0
-strI:   dw      #8000
 ROMEXT: db      ".ROM",0
 
 Bi_FNAM db      14,0,"D:FileName.ROM",0
@@ -3365,9 +3189,6 @@ MAIN_S: db      13,10
         db      " 3 - Restart the computer",13,10
         db      " 0 - Exit to MSX-DOS",13,10,"$"
 
-EXIT_S: db      10,13,"Thanks for using the RBSC's products!",13,10,"$"
-ANIK_S:
-        db      "Press any key to continue",13,10,"$"
 ADD_RI_S:
         db      13,10,"Input full ROM's file name or just press Enter to select files: $"
 SelMode:
@@ -3424,7 +3245,7 @@ Prg_Su_S:
         db      13,10,"The ROM image was successfully written into cartridge's RAM!","$"
 Prg_Reb_S:
         db      13,10,"Your MSX will reboot now ...",13,10,"$"
-Prg_Exit_S:
+Exit_S:
         db      13,10,"The program will now exit",10,13,"$"
 FL_er_S:
         db      13,10,"Writing into cartridge's RAM failed!",13,10,"$"
@@ -3453,24 +3274,9 @@ Findcrt_S:
 M_Wnvc:
         db      10,13,"WARNING!",10,13
         db      "Uninitialized cartridge or wrong version of Carnivore cartridge found!",10,13
-        db      "Only Carnivore2 cartridge is supported. The program will now exit.",10,13
-        db      "Press any key...",10,13,"$"
-FindcrI_S:
-        db      13,10,"Press ENTER for the found slot or input new slot number - $"
+        db      "Only Carnivore2 cartridge is supported. The program will now exit.",10,13,"$"
 
 SltN_S: db      13,10,"Using slot - $"
-
-M29W640:
-        db      "FlashROM chip detected: M29W640G$"
-NOTD_S: db      13,10,"FlashROM chip's type is not detected!",13,10
-        db      "This cartridge is not open for writing or may be defective!",13,10
-        db      "Try to reboot and hold down F5 key...",13,10
-        db      "$"
-MfC_S:  db      "Manufacturer's code: $"
-DVC_S:  db      "Device's code: $"
-EMB_S:  db      "Extended Memory Block: $"
-EMBF_S: db      "EMB Factory Locked",13,10,"$"
-EMBC_S: db      "EMB Customer Lockable",13,10,"$"
 
 I_FLAG_S:
         db      "Incorrect flag!",13,10,13,10,"$"
