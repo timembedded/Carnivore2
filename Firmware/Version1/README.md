@@ -56,10 +56,19 @@ Write has the following meaning:
 |Address|R/W|Description|
 |:--|:--|:--|
 |0x0000-0xFFFF|RW|Mappable to RAM or flash|
+|0x4000|RW|Card detection register|
 |0x0F80-0x0FBF|RW|Configuration registers when CardMDR[6..5] = 00|
 |0x4F80-0x4FBF|RW|Configuration registers when CardMDR[6..5] = 01|
 |0x8F80-0x8FBF|RW|Configuration registers when CardMDR[6..5] = 10|
 |0xCF80-0xCFBF|RW|Configuration registers when CardMDR[6..5] = 11|
+
+### Card detection register
+
+The card detection register is always enabled and thus can always be used to detect the cartridge,
+independent of the flash/ram mapping in this slot. To prevent conflicts the register is only accessible
+after writing the sequence "c", "v", "2" to the address. After writing the sequence consecutive reads
+from this register will return "C", "V", "2", then zeros. Writing an arbitrary value to the register
+then closes the access again.
 
 ### Configuration registers
 

@@ -2138,7 +2138,6 @@ SymbOut:
 
 FindSlot:
 ; Auto-detection
-        ld      ix,TRMSlt               ; Tabl Find Slt cart
         ld      b,3                     ; B=Primary Slot
 BCLM:
         ld      c,0                     ; C=Secondary Slot
@@ -2146,6 +2145,7 @@ BCLMI:
         push    bc
         call    AutoSeek
         pop     bc
+        jr      z,BCTSF1
         inc     c
         bit     7,a
         jr      z,BCLM2                 ; not extended slot
@@ -2154,20 +2154,6 @@ BCLMI:
         jr      nz,BCLMI                ; Jump if Secondary Slot < 4
 BCLM2:  dec     b
         jp      p,BCLM                  ; Jump if Primary Slot < 0
-        xor     a
-        ld      (ix),a                  ; finish autodetect
-; slot analise
-        ld      ix,TRMSlt
-        ld      a,(ix)
-        or      a
-        jr      z,BCLNS                 ; No detection
-; print slot table
-        ld      (ERMSlt),a              ; save first detected slot
-
-        print   Findcrt_S               ; "Found Carnivore2 cartridge in slot(s): "
-        jr      BCTSF1                  ; No input when slot is known
-
-BCLNS:
         print   NSFin_S                 ; "Carnivore2 cartridge was not found ..."
 
 ; input slot number
@@ -2198,6 +2184,7 @@ BCTSF:
 
 ; Print result
 BCTSF1:
+        print   Findcrt_S               ; "Found Carnivore2 cartridge in slot(s): "
         ld      a,(ERMSlt)
         ld      b,a
         cp      #80
@@ -2280,8 +2267,6 @@ NO_FND:
 ;
 AutoSeek:
 ; return reg A - slot
-;
-;
         ld      a,b
         xor     3                       ; Reverse the bits to reverse the search order (0 to 3)
         ld      hl,MNROM
@@ -2296,65 +2281,41 @@ AutoSeek:
         or      c                       ; Add secondary slot value to format FxxxSSPP
 primSlt:
         ld      (ERMSlt),a
-; ---
-;       ld      b,a                     ; Keep actual slot value
-;
-;       bit     7,a
-;       jr      nz,SecSlt               ; Jump if Secondary Slot
-;       and     3                       ; Keep primary slot bits
-;SecSlt:
-;       ld      c,a
-;
-;       ld      a,b                     ; Restore actual slot value
-; ---
-        ld      h,#40
-        call    ENASLT                  ; Select a Slot in Bank 1 (4000h ~ 7FFFh)
-
-        ld      hl,ADESCR
-        ld      de,DESCR
-        ld      b,7
-ASt00   ld      a,(de)
-        cp      (hl)
-        ret     nz
-        inc     hl
-        inc     de
-        djnz    ASt00
+        call    testsl1
         ld      a,(ERMSlt)
-        ld      (ix),a
-        inc     ix
         ret
 
 Testslot:
         ld      a,(ERMSlt)
+testsl1:
         ld      h,#40
         call    ENASLT
-
-        ld      hl,ADESCR
-        ld      de,DESCR
-        ld      b,7
-ASt01:  ld      a,(de)
-        cp      (hl)
-        jr      nz,ASt02
-        inc     hl
-        inc     de
-        djnz    ASt01
-        jr      ASt03
-ASt02:
-        ld      de,DESCR
-        ld      b,7
-ASt04:  ld      a,(de)
-        cp      #FF
-        jr      nz,ASt03
-        inc     de
-        djnz    ASt04
-ASt03:
+        ld      hl,#4000                ; detect using card detect register
+        ld      a,(hl)
         push    af
+        ld      a,'c'                   ; open card detect register by writing sequence 'cv2'
+        ld      (hl),a
+        ld      a,'v'
+        ld      (hl),a
+        ld      a,'2'
+        ld      (hl),a
+        ld      a,'C'                   ; check if we read back sequence 'CV2'
+        cp      (hl)
+        jr      nz,cnotf
+        ld      a,'V'
+        cp      (hl)
+        jr      nz,cnotf
+        ld      a,'2'
+        cp      (hl)
+cnotf:
+        pop     de
+        ld      (hl),d                  ; restore original content for in case this was ram,
+        push    af                      ; this also closes the register again when it was a hit
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT
         pop     af
         ret
-
 
 HEXA:
 ; HEX symbol (A) to halfbyte (A)
@@ -3096,7 +3057,6 @@ DOS2:   db      0
 ShadowMDR
         db      #21
 ERMSlt  db      1
-TRMSlt  db      #FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 Binpsl  db      2,0,"1",0
 slot:   db      1
 DMAP:   db      0

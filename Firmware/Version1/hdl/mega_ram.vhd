@@ -121,6 +121,11 @@ architecture rtl of mega_ram is
   signal MR3A_c1_i, MR3A_c1_r       : page_size_t;
   signal MR4A_c1_i, MR4A_c1_r       : page_size_t;
 
+  signal card_seq_r                 : integer range 0 to 3;
+  signal card_det_r                 : std_logic;
+  signal card_info_x, card_info_r   : std_logic_vector(23 downto 0);
+  signal card_info_latch_r          : std_logic;
+
   signal ios_mega_readdata_i        : std_logic_vector(7 downto 0);
 
   signal mes_mega_reg_addr_i        : std_logic_vector(5 downto 0);
@@ -169,7 +174,7 @@ architecture rtl of mega_ram is
 
   signal mes_mega_readdata_r, mes_mega_readdata_x     : std_logic_vector(7 downto 0);
   signal mes_mega_readdatavalid_r, mes_mega_readdatavalid_x : std_logic;
-  type mes_read_state_t is (MR_IDLE, MR_REG, MR_MEM);
+  type mes_read_state_t is (MR_IDLE, MR_REG, MR_CARD, MR_MEM);
   signal mes_read_state_r, mes_read_state_x           : mes_read_state_t;
 
 begin
@@ -299,11 +304,16 @@ begin
 
   process(all)
   begin
+    card_info_x <= card_info_r;
     mes_read_state_x <= mes_read_state_r;
     mes_mega_readdata_x <= (others => '-');
     mes_mega_readdatavalid_x <= '0';
     mes_mega_waitrequest <= '1';
     mem_mega_read_c1_i <= '0';
+
+    if (card_info_latch_r = '1') then
+      card_info_x <= x"435632";
+    end if;
 
     case (mes_read_state_r) is
       when MR_IDLE =>
@@ -316,6 +326,9 @@ begin
               ) then 
             -- Read registers
             mes_read_state_x <= MR_REG;
+          elsif (card_det_r = '1' and mes_mega_address = x"4000") then
+            -- Read card detect register
+            mes_read_state_x <= MR_CARD;
           else
             -- Read from mapped ram/flash
             mem_mega_read_c1_i <= '1';
@@ -326,6 +339,13 @@ begin
       when MR_REG =>
         -- Read register data
         mes_mega_readdata_x <= mes_mega_reg_readdata_r;
+        mes_mega_readdatavalid_x <= '1';
+        mes_read_state_x <= MR_IDLE;
+
+      when MR_CARD =>
+        -- Read card detect register
+        mes_mega_readdata_x <= card_info_r(card_info_r'high downto card_info_r'high - 7);
+        card_info_x <= card_info_r(card_info_r'high - 8 downto 0) & x"00";
         mes_mega_readdatavalid_x <= '1';
         mes_read_state_x <= MR_IDLE;
 
@@ -364,12 +384,12 @@ begin
       if (slot_reset = '1') then
         -- Reset values
         PF0_RV <= "00";
-        CardMDR    <= "00110000";  -- Config at 4F80, SCC enabled
-        aMconf     <= "11111111";  -- All features enabled
+        CardMDR    <= "00110000"; -- Config at 4F80, SCC enabled
+        aMconf     <= "11111111"; -- All features enabled
         AddrM0     <= "00000000";
         AddrM1     <= "00000000";
         AddrM2     <= "0000000";
-        AddrFR     <= "0000000";  -- shift  addr Flash Rom x 64κ
+        AddrFR     <= "0000000";  -- shift addr Flash Rom x 64κ
         aAddrFR    <= "0000000";
         -- Bank 1
         aR1.Mask   <= "11111000"; -- 0000h-07FFh + |
@@ -428,6 +448,25 @@ begin
             when "01001101" => Mconf(7)<='1'; Mconf(3 downto 0) <= "1111"; -- char M - set default subslot config
             when others     => PF0_RV <= "00";
           end case;
+        end if;
+
+        -- Card detect sequence
+        card_info_latch_r <= '0';
+        if (mem_nonreg_write_r = '1') then
+          card_seq_r <= 0;
+          card_det_r <= '0';
+          if (mem_nonreg_address_r = x"4000") then
+            if (mem_nonreg_writedata_r = x"63") then -- 'c'
+              card_seq_r <= 1;
+            elsif (mem_nonreg_writedata_r = x"76" and card_seq_r = 1) then -- 'v'
+              card_seq_r <= 2;
+            elsif (mem_nonreg_writedata_r = x"32" and card_seq_r = 2) then -- '2'
+              card_seq_r <= 3;
+              card_det_r <= '1';
+              card_info_latch_r <= '1';
+              CardMDR(7) <= '0'; -- enable control registers
+            end if;
+          end if;
         end if;
 
         -- Mapped I/O port access on 8F80 ( 0F80, 4F80, CF80 ) Cart mode resister write
@@ -741,6 +780,7 @@ begin
         mem_nonreg_write_r <= mem_nonreg_write_x;
         mem_ioreg_write_r <= mem_ioreg_write_x;
       end if;
+      card_info_r <= card_info_x;
       mes_mega_reg_addr_r <= mes_mega_reg_addr_i;
       mes_mega_readdata_r <= mes_mega_readdata_x;
       mes_mega_reg_readdata_r <= mes_mega_reg_readdata_x;
