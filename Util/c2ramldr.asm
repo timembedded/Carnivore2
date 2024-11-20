@@ -11,103 +11,6 @@ SPC     equ     0               ; 1 = for Arabic and Korean computers
                                 ; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
-        include "flash.inc"
-
-;--- Macro for printing a $-terminated string
-
-        macro print msg
-        ld      de,msg
-        ld      c,_STROUT
-        call    DOS
-        endm
-
-;--- System calls and variables
-
-DOS:    equ     #0005           ; DOS function calls entry point
-ENASLT: equ     #0024           ; BIOS Enable Slot
-WRTSLT: equ     #0014           ; BIOS Write to Slot
-CALLSLT:equ     #001C           ; Inter-slot call
-SCR0WID equ     #F3AE           ; Screen0 width
-CURSF   equ     #FCA9
-
-TPASLOT1:       equ     #F342
-TPASLOT2:       equ     #F343
-CSRY    equ     #F3DC
-CSRX    equ     #F3DD
-ARG:    equ     #F847
-EXTBIO: equ     #FFCA
-MNROM:  equ     #FCC1           ; Main-ROM Slot number & Secondary slot flags table
-
-CardMDR:        equ     #4F80
-AddrM0: equ     #4F80+1
-AddrM1: equ     #4F80+2
-AddrM2: equ     #4F80+3
-DatM0:  equ     #4F80+4
-
-AddrFR: equ     #4F80+5
-
-R1Mask: equ     #4F80+6
-R1Addr: equ     #4F80+7
-R1Reg:  equ     #4F80+8
-R1Mult: equ     #4F80+9
-B1MaskR:        equ     #4F80+10
-B1AdrD: equ     #4F80+11
-
-R2Mask: equ     #4F80+12
-R2Addr: equ     #4F80+13
-R2Reg:  equ     #4F80+14
-R2Mult: equ     #4F80+15
-B2MaskR:        equ     #4F80+16
-B2AdrD: equ     #4F80+17
-
-R3Mask: equ     #4F80+18
-R3Addr: equ     #4F80+19
-R3Reg:  equ     #4F80+20
-R3Mult: equ     #4F80+21
-B3MaskR:        equ     #4F80+22
-B3AdrD: equ     #4F80+23
-
-R4Mask: equ     #4F80+24
-R4Addr: equ     #4F80+25
-R4Reg:  equ     #4F80+26
-R4Mult: equ     #4F80+27
-B4MaskR:        equ     #4F80+28
-B4AdrD: equ     #4F80+29
-
-CardMod:        equ     #4F80+30
-
-CardMDR2:       equ     #4F80+31
-ConfFl: equ     #4F80+32
-ADESCR: equ     #4010
-
-;--- Important constants
-
-L_STR:  equ     16              ; number of entries on the screen
-MAPPN:  equ     5               ; max number of currently supported mappers
-
-;--- DOS function calls
-
-_TERM0: equ     #00             ; Program terminate
-_CONIN: equ     #01             ; Console input with echo
-_CONOUT:        equ     #02     ; Console output
-_DIRIO: equ     #06             ; Direct console I/O
-_INNOE: equ     #08             ; Console input without echo
-_STROUT:        equ     #09     ; String output
-_BUFIN: equ     #0A             ; Buffered line input
-
-_CONST: equ     #0B             ; Console status
-_FOPEN: equ     #0F             ; Open file
-_FCLOSE equ     #10             ; Close file
-_FSEARCHF       equ     #11     ; File Search First
-_FSEARCHN       equ     #12     ; File Search Next
-_FCREATE        equ     #16     ; File Create
-_SDMA:  equ     #1A             ; Set DMA address
-_RBWRITE        equ     #26     ; Random block write
-_RBREAD:        equ     #27     ; Random block read
-_TERM:  equ     #62             ; Terminate with error code
-_DEFAB: equ     #63             ; Define abort exit routine
-_DOSVER:        equ     #6F     ; Get DOS version
-
 
 ;************************
 ;***                  ***
@@ -116,6 +19,14 @@ _DOSVER:        equ     #6F     ; Get DOS version
 ;************************
 
         org     #100                    ; Needed for programs running under MSX-DOS
+
+        jp      PRGSTART
+
+        include "lib/defs.inc"
+        include "lib/flash.inc"
+        include "lib/console.inc"
+        include "lib/megamap.inc"
+        include "lib/argparse.inc"
 
 ;------------------------
 ;---  Initialization  ---
@@ -203,6 +114,35 @@ Stfp08: inc     a
         or      a
         jr      nz,Stfp09
 
+; mapper type
+        ld      a,(F_M)
+        or      a
+        jr      z,Stfp10
+        sub     "0"
+        jr      z,Stfp09
+        jr      c,Stfp09
+        ld      b,a
+        call    TTAB
+        ld      a,(hl)
+        or      a
+        jr      z,Stfp09
+        push    hl
+        ; copy tp RCPData
+        ld      de,RCPData
+        ldi
+        ld      bc,34
+        add     hl,bc
+        ld      bc,29
+        ldir
+        ; print selected map
+        print   NoAnalyze
+        pop     de
+        inc     de
+        ld      c,_STROUT
+        call    DOS
+        print   ONE_NL_S
+
+Stfp10:
 ; Find used slot
         call    FindSlot
         jp      c,Exit
@@ -217,6 +157,8 @@ Stfp30:
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
+        ld      a,(CardMod)             ; overwrite any pending configuration change
+        ld      (CardMod),a
         ld      a,#20                   ; immediate changes enabled
         ld      (CardMDR),a
         ld      hl,B2ON
@@ -493,8 +435,9 @@ opf3:   push    bc
         print   ONE_NL_S
 
 ; load RCP file if exists
-        xor     a
-        ld      (RCPData),a             ; erase RCP data
+        ld      a,(RCPData)             ; check RCP data (is set when mapper type was specified)
+        or      a
+        jr      nz,usercp
 
         ld      hl,FCB
         ld      de,FCBRCP
@@ -535,25 +478,13 @@ opf3:   push    bc
         cp      1                       ; 1 record (30 bytes) read?
         jr      nz,opf4
 
-        ld      a,(F_A)
-        or      a
-        jr      nz,opf32                ; skip question
-
-        print   RCPFound                ; ask to skip autodetection
-
-opf31:  ld      c,_INNOE                ; load RCP?
-        call    DOS
-        or      %00100000
-        cp      "n"
-        jr      z,opf4
-        cp      "y"
-        jr      nz,opf31
-
-opf32:
+; RCP file is loaded, use it
         ld      hl,BUFTOP
         ld      de,RCPData
         ld      bc,30
         ldir                            ; copy read RCP data to its place
+        print   UsingRCP
+usercp:
         ld      hl,RCPData+#04
         ld      a,(hl)
         or      %00100000               ; for ROM use and %11011111
@@ -918,7 +849,6 @@ FPT01B:
         ld      bc,29
         ldir                            ; copy the RCP record to directory record
 
-        print   UsingRCP
         jp      SFM80
 
 
@@ -1716,6 +1646,10 @@ run_card:
         print   ONE_NL_S
         print   Prg_Su_S
         ld      a,(F_R)
+        or      a
+        jp      nz, #c000
+        print   Prg_Reb_S
+        xor     a
         jp      #c000
 
 reconf_begin:
@@ -1723,22 +1657,24 @@ reconf_begin:
         ld      a,(ERMSlt)              ; restore slot
         ld      h,#40
         call    ENASLT
+        ld      a,%00111001             ; enable delayed reconfiguration
+        ld      (CardMDR),a
         ld      a,(#c102)               ; set start block
         ld      (CardMDR+#05),a
         ld      hl,#c100                ; configure mapper
         ld      bc,#23
         add     hl,bc                   ; config data
         ld      de,CardMDR+#06
-        ld      bc,26
+        ld      bc,25                   ; all but CardMDR
         ldir
-        ld      a,%10110001             ; disable config register
-        ld      (CardMDR),a
+        ld      a,(hl)                  ; CardMDR from RCP
+        or      a,%10001000             ; disable config register and enable delayed reconfiguration
+        ld      (de),a
         pop     af
         or      a
         jr      nz, reconf_exit
 
         ; reboot MSX
-        print   Prg_Reb_S
         in      a,(#F4)                 ; read from F4 port on MSX2+
         or      #80
         out     (#F4),a                 ; avoid "warm" reset on MSX2+
@@ -1989,37 +1925,6 @@ B23ON:  db      #F0,#80,#00,#04,#7F,#80
         db      #F0,#A0,#00,#34,#7F,#A0
 
 
-c_dir:
-; input d - dir idex num
-; outut ix - dir point enter
-; output Z - last/empty/deleted entry
-        ld      b,0
-        or      a
-        ld      a,d
-        rl      a
-        rl      b
-        rl      a
-        rl      b
-        rl      a
-        rl      b
-        rl      a
-        rl      b
-        rl      a
-        rl      b
-        rl      a
-        rl      b
-        ld      c,a
-        ld      ix,#8000
-        add     ix,bc                   ; 8000h + b*64
-
-        ld      a,(ix)
-        cp      #FF                     ; last record?
-        ret     z
-
-        ld      a,(ix+1)
-        or      a                       ; deleted record ?
-        ret
-
 ;-------------------------------
 TTAB:
 ;       ld      b,(DMAP)
@@ -2029,6 +1934,9 @@ TTAB:
 TTAB1:  dec     b
         ret     z
         add     hl,de
+        xor     a
+        cp      (hl)
+        ret     z
         jr      TTAB1
 
 
@@ -2126,796 +2034,6 @@ fnp2:   ld      a,(ix+1)
         ret
 
 
-; Output one symbol
-SymbOut:
-        push    af
-        ld      e,a
-        ld      c,_CONOUT
-        call    DOS
-        pop     af
-        ret
-
-
-FindSlot:
-; Auto-detection
-        ld      b,3                     ; B=Primary Slot
-BCLM:
-        ld      c,0                     ; C=Secondary Slot
-BCLMI:
-        push    bc
-        call    AutoSeek
-        pop     bc
-        jr      z,BCTSF1
-        inc     c
-        bit     7,a
-        jr      z,BCLM2                 ; not extended slot
-        ld      a,c
-        cp      4
-        jr      nz,BCLMI                ; Jump if Secondary Slot < 4
-BCLM2:  dec     b
-        jp      p,BCLM                  ; Jump if Primary Slot < 0
-        print   NSFin_S                 ; "Carnivore2 cartridge was not found ..."
-
-; input slot number
-        ld      de,Binpsl
-        ld      c,_BUFIN
-        call    DOS
-        ld      a,(Binpsl+1)
-        or      a
-        jr      z,BCTSF                 ; no input slot
-        ld      a,(Binpsl+2)
-        sub     a,"0"
-        and     3
-        ld      (ERMSlt),a
-        ld      a,(Binpsl+1)
-        cp      2
-        jr      nz,BCTSF                ; no extended
-        ld      a,(Binpsl+3)
-        sub     a,"0"
-        and     3
-        rlc     a
-        rlc     a
-        ld      hl,ERMSlt
-        or      (hl)
-        or      #80
-        ld      (hl),a
-BCTSF:
-        print   SltN_S
-
-; Print result
-BCTSF1:
-        print   Findcrt_S               ; "Found Carnivore2 cartridge in slot(s): "
-        ld      a,(ERMSlt)
-        ld      b,a
-        cp      #80
-        jr      nc,Trp01
-        ; only primary
-        and     3
-        add     a,"0"
-        ld      e,a
-        ld      c,_CONOUT
-        call    DOS
-        xor     a
-        ret
-Trp01:  rrc     a
-        rrc     a
-        and     %11000000
-        ld      c,a
-        ld      a,b
-        and     %00001100
-        or      c
-        rrc     a
-        rrc     a
-Trp02:  call    HEXOUT
-        print   ONE_NL_S
-        xor     a
-        ret
-
-
-;---- Out to conlose HEX byte
-; A - byte
-HEXOUT:
-        push    af
-        rrc     a
-        rrc     a
-        rrc     a
-        rrc     a
-        and     #0F
-        ld      b,0
-        ld      c,a
-        ld      hl,ABCD
-        add     hl,bc
-        ld      e,(hl)
-        ld      c,_CONOUT
-        call    DOS
-        pop     af
-        and     #0F
-        ld      b,0
-        ld      c,a
-        ld      hl,ABCD
-        add     hl,bc
-        ld      e,(hl)
-        ld      c,_CONOUT
-        call    DOS
-        ret
-HEX:
-;--- HEX
-; input  a- Byte
-; output a - H hex symbol
-;        b - L hex symbol
-        ld      c,a
-        and     #0F
-        add     a,48
-        cp      58
-        jr      c,he2
-        add     a,7
-he2:    ld      b,a
-        ld      a,c
-        rrc     a
-        rrc     a
-        rrc     a
-        rrc     a
-        and     #0F
-        add     a,48
-        cp      58
-        ret     c
-        add     a,7
-        ret
-
-
-NO_FND:
-;
-AutoSeek:
-; return reg A - slot
-        ld      a,b
-        xor     3                       ; Reverse the bits to reverse the search order (0 to 3)
-        ld      hl,MNROM
-        ld      d,0
-        ld      e,a
-        add     hl,de
-        bit     7,(hl)
-        jr      z,primSlt               ; Jump if slot is not expanded
-        or      (hl)                    ; Set flag for secondary slot
-        sla     c
-        sla     c
-        or      c                       ; Add secondary slot value to format FxxxSSPP
-primSlt:
-        ld      (ERMSlt),a
-        call    testsl1
-        ld      a,(ERMSlt)
-        ret
-
-Testslot:
-        ld      a,(ERMSlt)
-testsl1:
-        ld      h,#40
-        call    ENASLT
-        ld      hl,#4000                ; detect using card detect register
-        ld      a,(hl)
-        push    af
-        ld      a,'c'                   ; open card detect register by writing sequence 'cv2'
-        ld      (hl),a
-        ld      a,'v'
-        ld      (hl),a
-        ld      a,'2'
-        ld      (hl),a
-        ld      a,'C'                   ; check if we read back sequence 'CV2'
-        cp      (hl)
-        jr      nz,cnotf
-        ld      a,'V'
-        cp      (hl)
-        jr      nz,cnotf
-        ld      a,'2'
-        cp      (hl)
-cnotf:
-        pop     de
-        ld      (hl),d                  ; restore original content for in case this was ram,
-        push    af                      ; this also closes the register again when it was a hit
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-        pop     af
-        ret
-
-HEXA:
-; HEX symbol (A) to halfbyte (A)
-        cp      "0"
-        ret     c                       ; < "0"
-        cp      "9"+1
-        jr      nc,hexa1                ; > "9"
-        sub     "0"
-        ret
-hexa1:  and     %11011111               ; (inv #20) abc -> ABC
-        cp      "A"
-        ret     c                       ; < "A"
-        cp      "F"+1
-        jr      c,hexa2
-        scf
-        ret
-hexa2:  sub     "A"-#A
-        ret
-
-
-;-------------------------------------------------------------------------
-;--- NAME: EXTPAR
-;      Extracts a parameter from the command line
-;    INPUT:   A  = Parameter to extract (the first one is 1)
-;             DE = Buffer to put the extracted parameter
-;    OUTPUT:  A  = Total number of parameters in the command line
-;             CY = 1 -> The specified parameter does not exist
-;                       B undefined, buffer unmodified
-;             CY = 0 -> B = Parameter length, not including the tailing 0
-;                       Parameter extracted to DE, finished with a 0 byte
-;                       DE preserved
-
-EXTPAR: or      a                       ; Terminates with error if A = 0
-        scf
-        ret     z
-
-        ld      b,a
-        ld      a,(#80)                 ; Terminates with error if
-        or      a                       ; there are no parameters
-        scf
-        ret     z
-        ld      a,b
-
-        push    af,hl
-        ld      a,(#80)
-        ld      c,a                     ; Adds 0 at the end
-        ld      b,0                     ; (required under DOS 1)
-        ld      hl,#81
-        add     hl,bc
-        ld      (hl),0
-        pop     hl
-        pop     af
-
-        push    hl,de,ix
-        ld      ix,0                    ; IXl: Number of parameter
-        ld      ixh,a                   ; IXh: Parameter to be extracted
-        ld      hl,#81
-
-;* Scans the command line and counts parameters
-
-PASASPC:
-        ld      a,(hl)                  ; Skips spaces until a parameter
-        or      a                       ; is found
-        jr      z,ENDPNUM
-        cp      " "
-        inc     hl
-        jr      z,PASASPC
-
-        inc     ix                      ; Increases number of parameters
-PASAPAR:        ld      a,(hl)          ; Walks through the parameter
-        or      a
-        jr      z,ENDPNUM
-        cp      " "
-        inc     hl
-        jr      z,PASASPC
-        jr      PASAPAR
-
-;* Here we know already how many parameters are available
-
-ENDPNUM:        ld      a,ixl           ; Error if the parameter to extract
-        cp      ixh                     ; is greater than the total number of
-        jr      c,EXTPERR               ; parameters available
-
-        ld      hl,#81
-        ld      b,1                     ; B = current parameter
-PASAP2: ld      a,(hl)                  ; Skips spaces until the next
-        cp      " "                     ; parameter is found
-        inc     hl
-        jr      z,PASAP2
-
-        ld      a,ixh                   ; If it is the parameter we are
-        cp      b                       ; searching for, we extract it,
-        jr      z,PUTINDE0              ; else...
-
-        inc     b
-PASAP3: ld      a,(hl)                  ; ...we skip it and return to PASAP2
-        cp      " "
-        inc     hl
-        jr      nz,PASAP3
-        jr      PASAP2
-
-;* Parameter is located, now copy it to the user buffer
-
-PUTINDE0:
-        ld      b,0
-        dec     hl
-PUTINDE:        inc     b
-        ld      a,(hl)
-        cp      " "
-        jr      z,ENDPUT
-        or      a
-        jr      z,ENDPUT
-        ld      (de),a                  ; Parameter is copied to (DE)
-        inc     de
-        inc     hl
-        jr      PUTINDE
-
-ENDPUT: xor     a
-        ld      (de),a
-        dec     b
-
-        ld      a,ixl
-        or      a
-        jr      FINEXTP
-EXTPERR:        scf
-FINEXTP:        pop     ix
-                pop     de
-                pop     hl
-        ret
-
-
-termdos:
-        ld      c,_STROUT
-        call    DOS
-
-        ld      c,_TERM0
-        jp      DOS
-
-
-
-;--- NAME: NUMTOASC
-;      Converts a 16 bit number into an ASCII string
-;    INPUT:      DE = Number to convert
-;                HL = Buffer to put the generated ASCII string
-;                B  = Total number of characters of the string
-;                     not including any termination character
-;                C  = Padding character
-;                     The generated string is right justified,
-;                     and the remaining space at the left is padded
-;                     with the character indicated in C.
-;                     If the generated string length is greater than
-;                     the value specified in B, this value is ignored
-;                     and the string length is the one needed for
-;                     all the digits of the number.
-;                     To compute length, termination character "$" or 00
-;                     is not counted.
-;                 A = &B ZPRFFTTT
-;                     TTT = Format of the generated string number:
-;                            0: decimal
-;                            1: hexadecimal
-;                            2: hexadecimal, starting with "&H"
-;                            3: hexadecimal, starting with "#"
-;                            4: hexadecimal, finished with "H"
-;                            5: binary
-;                            6: binary, starting with "&B"
-;                            7: binary, finishing with "B"
-;                     R   = Range of the input number:
-;                            0: 0..65535 (unsigned integer)
-;                            1: -32768..32767 (twos complement integer)
-;                               If the output format is binary,
-;                               the number is assumed to be a 8 bit integer
-;                               in the range 0.255 (unsigned).
-;                               That is, bit R and register D are ignored.
-;                     FF  = How the string must finish:
-;                            0: No special finish
-;                            1: Add a "$" character at the end
-;                            2: Add a 00 character at the end
-;                            3: Set to 1 the bit 7 of the last character
-;                     P   = "+" sign:
-;                            0: Do not add a "+" sign to positive numbers
-;                            1: Add a "+" sign to positive numbers
-;                     Z   = Left zeros:
-;                            0: Remove left zeros
-;                            1: Do not remove left zeros
-;    OUTPUT:    String generated in (HL)
-;               B = Length of the string, not including the padding
-;               C = Length of the string, including the padding
-;                   Tailing "$" or 00 are not counted for the length
-;               All other registers are preserved
-
-NUMTOASC:
-        push    af,ix,de,hl
-        ld      ix,WorkNTOA
-        push    af,af
-        and     %00000111
-        ld      (ix+0),a                ; Type
-        pop     af
-        and     %00011000
-        rrca
-        rrca
-        rrca
-        ld      (ix+1),a                ; Finishing
-        pop     af
-        and     %11100000
-        rlca
-        rlca
-        rlca
-        ld      (ix+6),a                ; Flags: Z(zero), P(+ sign), R(range)
-        ld      (ix+2),b                ; Number of final characters
-        ld      (ix+3),c                ; Padding character
-        xor     a
-        ld      (ix+4),a                ; Total length
-        ld      (ix+5),a                ; Number length
-        ld      a,10
-        ld      (ix+7),a                ; Divisor = 10
-        ld      (ix+13),l               ; User buffer
-        ld      (ix+14),h
-        ld      hl,BufNTOA
-        ld      (ix+10),l               ; Internal buffer
-        ld      (ix+11),h
-
-ChkTipo:        ld      a,(ix+0)        ; Set divisor to 2 or 16,
-        or      a                       ; or leave it to 10
-        jr      z,ChkBoH
-        cp      5
-        jp      nc,EsBin
-EsHexa: ld      a,16
-        jr      GTipo
-EsBin:  ld      a,2
-        ld      d,0
-        res     0,(ix+6)                ; If binary, range is 0-255
-GTipo:  ld      (ix+7),a
-
-ChkBoH: ld      a,(ix+0)                ; Checks if a final "H" or "B"
-        cp      7                       ; is desired
-        jp      z,PonB
-        cp      4
-        jr      nz,ChkTip2
-PonH:   ld      a,"H"
-        jr      PonHoB
-PonB:   ld      a,"B"
-PonHoB: ld      (hl),a
-        inc     hl
-        inc     (ix+4)
-        inc     (ix+5)
-
-ChkTip2:        ld      a,d             ; If the number is 0, never add sign
-        or      e
-        jr      z,NoSgn
-        bit     0,(ix+6)                ; Checks range
-        jr      z,SgnPos
-ChkSgn: bit     7,d
-        jr      z,SgnPos
-SgnNeg: push    hl                      ; Negates number
-        ld      hl,0                    ; Sign=0:no sign; 1:+; 2:-
-        xor     a
-        sbc     hl,de
-        ex      de,hl
-        pop     hl
-        ld      a,2
-        jr      FinSgn
-SgnPos: bit     1,(ix+6)
-        jr      z,NoSgn
-        ld      a,1
-        jr      FinSgn
-NoSgn:  xor     a
-FinSgn: ld      (ix+12),a
-
-ChkDoH: ld      b,4
-        xor     a
-        cp      (ix+0)
-        jp      z,EsDec
-        ld      a,4
-        cp      (ix+0)
-        jp      nc,EsHexa2
-EsBin2: ld      b,8
-        jr      EsHexa2
-EsDec:  ld      b,5
-
-EsHexa2:        push    de
-Divide: push    bc,hl                   ; DE/(IX+7)=DE, remaining A
-        ld      a,d
-        ld      c,e
-        ld      d,0
-        ld      e,(ix+7)
-        ld      hl,0
-        ld      b,16
-BucDiv: rl      c
-        rla
-        adc     hl,hl
-        sbc     hl,de
-        jr      nc,$+3
-        add     hl,de
-        ccf
-        djnz    BucDiv
-        rl      c
-        rla
-        ld      d,a
-        ld      e,c
-        ld      a,l
-        pop     hl
-        pop     bc
-
-ChkRest9:       cp      10              ; Converts the remaining
-        jp      nc,EsMay9               ; to a character
-EsMen9: add     a,"0"
-        jr      PonEnBuf
-EsMay9: sub     10
-        add     a,"A"
-
-PonEnBuf:       ld      (hl),a          ; Puts character in the buffer
-        inc     hl
-        inc     (ix+4)
-        inc     (ix+5)
-        djnz    Divide
-        pop     de
-
-ChkECros:       bit     2,(ix+6)        ; Checks if zeros must be removed
-        jr      nz,ChkAmp
-        dec     hl
-        ld      b,(ix+5)
-        dec     b                       ; B=num. of digits to check
-Chk1Cro:        ld      a,(hl)
-        cp      "0"
-        jr      nz,FinECeros
-        dec     hl
-        dec     (ix+4)
-        dec     (ix+5)
-        djnz    Chk1Cro
-FinECeros:      inc     hl
-
-ChkAmp: ld      a,(ix+0)                ; Puts "#", "&H" or "&B" if necessary
-        cp      2
-        jr      z,PonAmpH
-        cp      3
-        jr      z,PonAlm
-        cp      6
-        jr      nz,PonSgn
-PonAmpB:        ld      a,"B"
-        jr      PonAmpHB
-PonAlm: ld      a,"#"
-        ld      (hl),a
-        inc     hl
-        inc     (ix+4)
-        inc     (ix+5)
-        jr      PonSgn
-PonAmpH:        ld      a,"H"
-PonAmpHB:       ld      (hl),a
-        inc     hl
-        ld      a,"&"
-        ld      (hl),a
-        inc     hl
-        inc     (ix+4)
-        inc     (ix+4)
-        inc     (ix+5)
-        inc     (ix+5)
-
-PonSgn: ld      a,(ix+12)               ; Puts sign
-        or      a
-        jr      z,ChkLon
-SgnTipo:        cp      1
-        jr      nz,PonNeg
-PonPos: ld      a,"+"
-        jr      PonPoN
-        jr      ChkLon
-PonNeg: ld      a,"-"
-PonPoN  ld      (hl),a
-        inc     hl
-        inc     (ix+4)
-        inc     (ix+5)
-
-ChkLon: ld      a,(ix+2)                ; Puts padding if necessary
-        cp      (ix+4)
-        jp      c,Invert
-        jr      z,Invert
-PonCars:        sub     (ix+4)
-        ld      b,a
-        ld      a,(ix+3)
-Pon1Car:        ld      (hl),a
-        inc     hl
-        inc     (ix+4)
-        djnz    Pon1Car
-
-Invert: ld      l,(ix+10)
-        ld      h,(ix+11)
-        xor     a                       ; Inverts the string
-        push    hl
-        ld      (ix+8),a
-        ld      a,(ix+4)
-        dec     a
-        ld      e,a
-        ld      d,0
-        add     hl,de
-        ex      de,hl
-        pop     hl                      ; HL=initial buffer, DE=final buffer
-        ld      a,(ix+4)
-        srl     a
-        ld      b,a
-BucInv: push    bc
-        ld      a,(de)
-        ld      b,(hl)
-        ex      de,hl
-        ld      (de),a
-        ld      (hl),b
-        ex      de,hl
-        inc     hl
-        dec     de
-        pop     bc
-        ld      a,b                     ; *** This part was missing on the
-        or      a                       ; *** original routine
-        jr      z,ToBufUs               ; ***
-        djnz    BucInv
-ToBufUs:
-        ld      l,(ix+10)
-        ld      h,(ix+11)
-        ld      e,(ix+13)
-        ld      d,(ix+14)
-        ld      c,(ix+4)
-        ld      b,0
-        ldir
-        ex      de,hl
-
-ChkFin1:        ld      a,(ix+1)        ; Checks if "$" or 00 finishing is desired
-        and     %00000111
-        or      a
-        jr      z,Fin
-        cp      1
-        jr      z,PonDolar
-        cp      2
-        jr      z,PonChr0
-
-PonBit7:        dec     hl
-        ld      a,(hl)
-        or      %10000000
-        ld      (hl),a
-        jr      Fin
-
-PonChr0:        xor     a
-        jr      PonDo0
-PonDolar:       ld      a,"$"
-PonDo0: ld      (hl),a
-        inc     (ix+4)
-
-Fin:    ld      b,(ix+5)
-        ld      c,(ix+4)
-        pop     hl
-        pop     de
-        pop     ix
-        pop     af
-        ret
-
-WorkNTOA:       defs    16
-BufNTOA:        ds      10
-
-
-;--- EXTNUM16
-;      Extracts a 16-bit number from a zero-finished ASCII string
-;    Input:  HL = ASCII string address
-;    Output: BC = Extracted number
-;            Cy = 1 if error (invalid string)
-;
-;EXTNUM16:      call    EXTNUM
-;       ret     c
-;       jp      c,INVPAR                ; Error if >65535
-;
-;       ld      a,e
-;       or      a                       ; Error if the last char is not 0
-;       ret     z
-;       scf
-;       ret
-
-
-;--- NAME: EXTNUM
-;      Extracts a 5 digits number from an ASCII string
-;    INPUT:      HL = ASCII string address
-;    OUTPUT:     CY-BC = 17 bits extracted number
-;                D  = number of digits of the number
-;                     The number is considered to be completely extracted
-;                     when a non-numeric character is found,
-;                     or when already five characters have been processed.
-;                E  = first non-numeric character found (or 6th digit)
-;                A  = error:
-;                     0 => No error
-;                     1 => The number has more than five digits.
-;                          CY-BC contains then the number composed with
-;                          only the first five digits.
-;    All other registers are preserved.
-
-EXTNUM: push    hl,ix
-        ld      ix,ACA
-        res     0,(ix)
-        set     1,(ix)
-        ld      bc,0
-        ld      de,0
-BUSNUM: ld      a,(hl)                  ; Jumps to FINEXT if no numeric character
-        ld      e,a                     ; IXh = last read character
-        cp      "0"
-        jr      c,FINEXT
-        cp      "9"+1
-        jr      nc,FINEXT
-        ld      a,d
-        cp      5
-        jr      z,FINEXT
-        call    POR10
-
-SUMA:   push    hl                      ; BC = BC + A
-        push    bc
-        pop     hl
-        ld      bc,0
-        ld      a,e
-        sub     "0"
-        ld      c,a
-        add     hl,bc
-        call    c,BIT17
-        push    hl
-        pop     bc
-        pop     hl
-
-        inc     d
-        inc     hl
-        jr      BUSNUM
-
-BIT17:  set     0,(ix)
-        ret
-ACA:    db      0                       ; b0: num>65535. b1: more than 5 digits
-
-FINEXT: ld      a,e
-        cp      "0"
-        call    c,NODESB
-        cp      "9"+1
-        call    nc,NODESB
-        ld      a,(ix)
-        pop     ix
-        pop     hl
-        srl     a
-        ret
-
-NODESB: res     1,(ix)
-        ret
-
-POR10:  push    de,hl                   ; BC = BC * 10
-        push    bc
-        push    bc
-        pop     hl
-        pop     de
-        ld      b,3
-ROTA:   sla     l
-        rl      h
-        djnz    ROTA
-        call    c,BIT17
-        add     hl,de
-        call    c,BIT17
-        add     hl,de
-        call    c,BIT17
-        push    hl
-        pop     bc
-        pop     hl
-        pop     de
-        ret
-
-
-; Clear screen and set screen 0
-CLRSCR:
-        xor     a
-        rst     #30
-   if SPC=0
-        db      0
-   else
-        db      #80
-   endif
-        dw      #005F
-
-        xor     a
-        ld      (CURSF),a
-
-        ret
-
-; Hide functional keys
-KEYOFF:
-        rst     #30
-   if SPC=0
-        db      0
-   else
-        db      #80
-   endif
-        dw      #00CC
-        ret
-
-; Unhide functional keys
-KEYON:
-        rst     #30
-   if SPC=0
-        db      0
-   else
-        db      #80
-   endif
-        dw      #00CF
-        ret
-
-
 F_Key:
 ; Input A - Num parameter
 ; Output C,Z Flags, set key variable
@@ -2962,29 +2080,44 @@ fkey03: ld      hl,BUFFER+1
 fkey04: ld      hl,BUFFER+1
         ld      a,(hl)
         and     %11011111
-        cp      "H"
+        cp      "M"
         jr      nz,fkey05
         inc     hl
         ld      a,(hl)
         or      a
-        jr      nz,fkey05
+        jr      z,fkeyill
+        ld      (F_M),a                 ; mapper type
+        inc     hl
+        ld      a,(hl)
+        or      a
+        ret     z
+fkey05: ld      hl,BUFFER+1
+        ld      a,(hl)
+        and     %11011111
+        cp      "H"
+        jr      nz,fkey06
+        inc     hl
+        ld      a,(hl)
+        or      a
+        jr      nz,fkey06
         ld      a,4
         ld      (F_H),a                 ; show help
         ret
-fkey05:
+fkey06:
         ld      hl,BUFFER+1
         ld      a,(hl)
         and     %11011111
         cp      "R"
-        jr      nz,fkey06
+        jr      nz,fkey07
         inc     hl
         ld      a,(hl)
         or      a
-        jr      nz,fkey06
+        jr      nz,fkey07
         ld      a,4
         ld      (F_R),a                 ; no reset after loading ROM
         ret
-fkey06:
+fkey07:
+fkeyill:
         xor     a
         dec     a                       ; S - Illegal flag
         ret
@@ -3106,6 +2239,7 @@ F_H     db      0
 F_P     db      0
 F_A     db      0
 F_V     db      0
+F_M     db      0
 F_R     db      0
 p1e     db      0
 
@@ -3157,9 +2291,6 @@ NoMatch:
         db      10,13,"No ROM files found in the current directory!",10,13,"$"
 OpFile_S:
         db      10,13,"Opening file: ","$"
-RCPFound:
-        db      "RCP file with the same name found!"
-        db      10,13,"Use loaded RCP data for this ROM? (y/n)",10,13,"$"
 UsingRCP:
         db      "Autodetection ignored, using data from RCP file...",10,13,"$"
 F_NOT_F_S:
@@ -3246,16 +2377,19 @@ I_MPAR_S:
         db      "Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
         db      "Usage:",13,10,13,10
-        db      " c2ramldr [filename.rom] [/h] [/v] [/a] [/p] [/r]",13,10,13,10
+        db      " c2ramldr [filename.rom] [/h] [/v] [/mN] [/a] [/p] [/r]",13,10,13,10
         db      "Command line options:",13,10
         db      " /h  - this help screen",13,10
         db      " /v  - verbose mode (show detailed information)",13,10
+        db      " /m[1..4] - mapper select",13,10
+        db      "   (1 = Konami 4, 2 = Konami 5 SCC, 3 = ASCII 8, 4 = ASCII 16)",13,10
         db      " /p  - switch RAM protection off after copying the ROM",10,13
-        db      " /a  - autodetect and write ROM image (no user interaction)",13,10
+        db      " /a  - do not ask configrmation (no user interaction)",13,10
         db      " /r  - do not restart the computer after uploading the ROM",10,13,"$"
 
 RCPData:
-        ds      30
+        db      0
+        ds      29
 
         db      0,0,0
         db      "RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"

@@ -16,7 +16,7 @@ SPC	equ	0		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
-	include	"flash.inc"
+	include	"lib/flash.inc"
 
 ;--- Macro for printing a $-terminated string and 1 symbol
 
