@@ -79,7 +79,7 @@ then closes the access again.
 ||||bit 6..5 : address of config registers (00 = 0F80h, 01 = 4F80h, 10 = 8F80h, 11 = CF80h)|Yes|
 ||||bit 4    : enable SCC|Yes|
 ||||bit 3    : delayed reconfiguration (bank registers only)|Yes|
-||||bit 2    : select activate bank configurations 0=of start/jmp0/rst0 1= read(400Xh)|Yes|
+||||bit 2    : select activate bank configurations 0=of start/jmp0/rst0 1= read(400Xh)|No|
 ||||bit 1    : shadow BIOS in RAM|Yes|
 ||||bit 0    : disable read direct card vector port and card configuration registers|Yes|
 |0x01|RW|AddrM0|Flash address A7..A0 for direct flash chip access|Yes|
@@ -92,7 +92,7 @@ then closes the access again.
 |0x12-0x17|RW|R3|Bank configuration registers 3|Yes|
 |0x18-0x1B|RW|R4|Bank configuration registers 4|Yes|
 |0x1E|RW|MConf|Machine configuration register|Partially|
-||||bit 7    : enable expand slot|No|
+||||bit 7    : enable expand slot|Yes|
 ||||bit 6    : enable read mapper port (FCh, FDh, FEh, FFh)|No|
 ||||bit 5    : enable YM2413 (FM-Pack syntesizer)|No|
 ||||bit 4    : enable control MMM port (3C)|No|

@@ -46,6 +46,7 @@ entity address_decoding is
 
     -- Functions
     test_reg                  : out std_logic_vector(7 downto 0);
+    enable_expand             : in std_logic;
     enable_ide                : in std_logic;
     enable_mapper             : in std_logic;
     enable_fmpac              : in std_logic;
@@ -110,6 +111,13 @@ entity address_decoding is
 end address_decoding;
 
 architecture rtl of address_decoding is
+
+  -- Functions
+  signal enable_expand_r                        : std_logic;
+  signal enable_ide_r                           : std_logic;
+  signal enable_mapper_r                        : std_logic;
+  signal enable_fmpac_r                         : std_logic;
+  signal enable_scc_r                           : std_logic;
 
   -- Slot expander
   signal slot_expand_reg_x, slot_expand_reg_r   : std_logic_vector(7 downto 0);
@@ -203,6 +211,7 @@ begin
   iom_mega_writedata    <= ios_writedata;
 
 
+
   --------------------------------------------------------------------
   -- Test register
   --------------------------------------------------------------------
@@ -210,6 +219,15 @@ begin
   test_reg_x <= ios_writedata when ios_write = '1' and ios_address = x"52" else
                 test_reg_r;
 
+  --------------------------------------------------------------------
+  -- Functions
+  --------------------------------------------------------------------
+
+  enable_expand_r <= enable_expand when rising_edge(clock);
+  enable_ide_r <= enable_ide when rising_edge(clock);
+  enable_mapper_r <= enable_mapper when rising_edge(clock);
+  enable_fmpac_r <= enable_fmpac when rising_edge(clock);
+  enable_scc_r <= enable_scc when rising_edge(clock);
 
   --------------------------------------------------------------------
   -- Slot expander
@@ -218,22 +236,26 @@ begin
   slot_expand_reg_x <= mes_writedata when mes_write = '1' and mes_address(15 downto 0) = x"ffff" else
                        slot_expand_reg_r;
 
-  exp_select_i(0) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "00") else
+  exp_select_i(0) <= '1' when enable_expand_r = '0' else
+                     '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "00") else
                      '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "00") else
                      '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "00") else
                      '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "00") else '0';
 
-  exp_select_i(1) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "01") else
+  exp_select_i(1) <= '1' when enable_expand_r = '0' else
+                     '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "01") else
                      '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "01") else
                      '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "01") else
                      '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "01") else '0';
 
-  exp_select_i(2) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "10") else
+  exp_select_i(2) <= '1' when enable_expand_r = '0' else
+                     '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "10") else
                      '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "10") else
                      '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "10") else
                      '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "10") else '0';
 
-  exp_select_i(3) <= '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "11") else
+  exp_select_i(3) <= '1' when enable_expand_r = '0' else
+                     '1' when (mes_address(16 downto 14) = "000" and slot_expand_reg_r(1 downto 0) = "11") else
                      '1' when (mes_address(16 downto 14) = "001" and slot_expand_reg_r(3 downto 2) = "11") else
                      '1' when (mes_address(16 downto 14) = "010" and slot_expand_reg_r(5 downto 4) = "11") else
                      '1' when (mes_address(16 downto 14) = "011" and slot_expand_reg_r(7 downto 6) = "11") else '0';
@@ -246,17 +268,17 @@ begin
   -- Address decoding
   mem_chipselect : process(all)
   begin
-    if (mes_address(16) = '0' and mes_address(15 downto 0) = x"ffff") then
+    if (enable_expand_r = '1' and mes_address(16) = '0' and mes_address(15 downto 0) = x"ffff") then
       mem_cs_i <= MEM_CS_EXTREG;
-    elsif (exp_select_i(0) = '1' and enable_scc = '1') then
+    elsif (exp_select_i(0) = '1' and enable_scc_r = '1') then
       mem_cs_i <= MEM_CS_SCC;
-    --elsif (mes_address(16) = '1' and enable_scc = '1') then
+    --elsif (mes_address(16) = '1' and enable_scc_r = '1') then
     --  mem_cs_i <= MEM_CS_SCC;
-    elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01" and enable_ide = '1') then
+    elsif (exp_select_i(1) = '1' and mes_address(15 downto 14) = "01" and enable_ide_r = '1') then
       mem_cs_i <= MEM_CS_IDE;
-    elsif (exp_select_i(2) = '1' and enable_mapper = '1') then
+    elsif (exp_select_i(2) = '1' and enable_mapper_r = '1') then
       mem_cs_i <= MEM_CS_MAPPER;
-    elsif (exp_select_i(3) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac = '1') then
+    elsif (exp_select_i(3) = '1' and mes_address(15 downto 14) = "01" and enable_fmpac_r = '1') then
       mem_cs_i <= MEM_CS_FMPAC;
     else
       mem_cs_i <= MEM_CS_NONE;
@@ -376,10 +398,10 @@ begin
   -- Address decoding
   iom_chipselect : process(all)
   begin
-    if (ios_address(7 downto 2) = "1111"&"11" and enable_mapper = '1') then
+    if (ios_address(7 downto 2) = "1111"&"11" and enable_mapper_r = '1') then
       -- 0xFC - 0xFF
       iom_cs_i <= IOM_CS_MAPPER;
-    elsif (ios_address(7 downto 1) = "0111"&"110" and enable_fmpac = '1') then
+    elsif (ios_address(7 downto 1) = "0111"&"110" and enable_fmpac_r = '1') then
       -- 0x7C - 0x7D
       iom_cs_i <= IOM_CS_FMPAC;
     elsif (ios_address(7 downto 2) = "1111"&"00") then

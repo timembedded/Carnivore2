@@ -166,6 +166,7 @@ architecture rtl of top is
 
   -- Functions
   signal beep_i                     : std_logic;
+  signal enable_expand_i            : std_logic;
   signal enable_ide_a_i, enable_ide_b_i       : std_logic;
   signal enable_mapper_a_i, enable_mapper_b_i : std_logic;
   signal enable_fmpac_a_i, enable_fmpac_b_i   : std_logic;
@@ -617,6 +618,7 @@ begin
 
     -- Functions
     test_reg          => open,
+    enable_expand     => enable_expand_i,
     enable_ide        => enable_ide_a_i and enable_ide_b_i,
     enable_mapper     => enable_mapper_a_i and enable_mapper_b_i,
     enable_fmpac      => enable_fmpac_a_i and enable_fmpac_b_i,
@@ -812,8 +814,8 @@ begin
     slot_reset             => slot_reset_i,
     soft_reset             => soft_reset_i,
 
-    -- Config
     -- Functions
+    enable_expand          => enable_expand_i,
     enable_ide             => enable_ide_b_i,
     enable_mapper          => enable_mapper_b_i,
     enable_fmpac           => enable_fmpac_b_i,

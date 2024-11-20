@@ -223,7 +223,7 @@ begin
       slt_data <= (others => 'Z');
     end if;
 
-    if (soft_rst_d = '0' and soft_rst_r = '0') then
+    if (soft_rst_d = '0' and soft_rst_r = '1' and slot_reg_r(1 downto 0) = "00") then
       soft_reset_x <= '1';
     end if;
 

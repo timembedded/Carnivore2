@@ -34,6 +34,7 @@ entity mega_ram is
     EEDO                   : in std_logic;
 
     -- Config
+    enable_expand          : out std_logic;
     enable_ide             : out std_logic;
     enable_mapper          : out std_logic;
     enable_fmpac           : out std_logic;
@@ -108,12 +109,11 @@ architecture rtl of mega_ram is
   signal AddrM1                     : std_logic_vector(7 downto 0);
   signal AddrM2                     : std_logic_vector(6 downto 0);
   signal AddrFR                     : std_logic_vector(6 downto 0);
-  signal aAddrFR                    : std_logic_vector(6 downto 0);
 
-  signal R1, aR1                    : map_bank_t;
-  signal R2, aR2                    : map_bank_t;
-  signal R3, aR3                    : map_bank_t;
-  signal R4, aR4                    : map_bank_t;
+  signal R1                         : map_bank_t;
+  signal R2                         : map_bank_t;
+  signal R3                         : map_bank_t;
+  signal R4                         : map_bank_t;
 
   type page_size_t is (PAGE_64k, PAGE_32k, PAGE_16k, PAGE_8k, PAGE_NONE);
   signal MR1A_c1_i, MR1A_c1_r       : page_size_t;
@@ -216,6 +216,7 @@ begin
   --              other - disable bank
 
   -- Config output
+  enable_expand <= Mconf(7);
   enable_scc <= Mconf(0) and CardMDR(4);
   enable_ide <= Mconf(1);
   enable_mapper <= Mconf(2);
@@ -260,41 +261,42 @@ begin
       AddrM0      when mes_mega_reg_addr_i = "000001" else
       AddrM1      when mes_mega_reg_addr_i = "000010" else
       "0"&AddrM2  when mes_mega_reg_addr_i = "000011" else
-      "0"&aAddrFR when mes_mega_reg_addr_i = "000101" else
+      "0"&AddrFR  when mes_mega_reg_addr_i = "000101" else
 
-      aR1.Mask    when mes_mega_reg_addr_i = "000110" else
-      aR1.Addr    when mes_mega_reg_addr_i = "000111" else
-      aR1.Reg     when mes_mega_reg_addr_i = "001000" else
-      aR1.Mult    when mes_mega_reg_addr_i = "001001" else
-      aR1.MaskR   when mes_mega_reg_addr_i = "001010" else
-      aR1.AdrD    when mes_mega_reg_addr_i = "001011" else
+      R1.Mask     when mes_mega_reg_addr_i = "000110" else
+      R1.Addr     when mes_mega_reg_addr_i = "000111" else
+      R1.Reg      when mes_mega_reg_addr_i = "001000" else
+      R1.Mult     when mes_mega_reg_addr_i = "001001" else
+      R1.MaskR    when mes_mega_reg_addr_i = "001010" else
+      R1.AdrD     when mes_mega_reg_addr_i = "001011" else
 
-      aR2.Mask    when mes_mega_reg_addr_i = "001100" else
-      aR2.Addr    when mes_mega_reg_addr_i = "001101" else
-      aR2.Reg     when mes_mega_reg_addr_i = "001110" else
-      aR2.Mult    when mes_mega_reg_addr_i = "001111" else
-      aR2.MaskR   when mes_mega_reg_addr_i = "010000" else
-      aR2.AdrD    when mes_mega_reg_addr_i = "010001" else
+      R2.Mask     when mes_mega_reg_addr_i = "001100" else
+      R2.Addr     when mes_mega_reg_addr_i = "001101" else
+      R2.Reg      when mes_mega_reg_addr_i = "001110" else
+      R2.Mult     when mes_mega_reg_addr_i = "001111" else
+      R2.MaskR    when mes_mega_reg_addr_i = "010000" else
+      R2.AdrD     when mes_mega_reg_addr_i = "010001" else
 
-      aR3.Mask    when mes_mega_reg_addr_i = "010010" else
-      aR3.Addr    when mes_mega_reg_addr_i = "010011" else
-      aR3.Reg     when mes_mega_reg_addr_i = "010100" else
-      aR3.Mult    when mes_mega_reg_addr_i = "010101" else
-      aR3.MaskR   when mes_mega_reg_addr_i = "010110" else
-      aR3.AdrD    when mes_mega_reg_addr_i = "010111" else
+      R3.Mask     when mes_mega_reg_addr_i = "010010" else
+      R3.Addr     when mes_mega_reg_addr_i = "010011" else
+      R3.Reg      when mes_mega_reg_addr_i = "010100" else
+      R3.Mult     when mes_mega_reg_addr_i = "010101" else
+      R3.MaskR    when mes_mega_reg_addr_i = "010110" else
+      R3.AdrD     when mes_mega_reg_addr_i = "010111" else
 
-      aR4.Mask    when mes_mega_reg_addr_i = "011000" else
-      aR4.Addr    when mes_mega_reg_addr_i = "011001" else
-      aR4.Reg     when mes_mega_reg_addr_i = "011010" else
-      aR4.Mult    when mes_mega_reg_addr_i = "011011" else
-      aR4.MaskR   when mes_mega_reg_addr_i = "011100" else
-      aR4.AdrD    when mes_mega_reg_addr_i = "011101" else
+      R4.Mask     when mes_mega_reg_addr_i = "011000" else
+      R4.Addr     when mes_mega_reg_addr_i = "011001" else
+      R4.Reg      when mes_mega_reg_addr_i = "011010" else
+      R4.Mult     when mes_mega_reg_addr_i = "011011" else
+      R4.MaskR    when mes_mega_reg_addr_i = "011100" else
+      R4.AdrD     when mes_mega_reg_addr_i = "011101" else
+
+      Mconf       when mes_mega_reg_addr_i = "011110" else
+      CardMDR     when mes_mega_reg_addr_i = "011111" else
 
       "0000" & EECS1 & EECK1 & EEDI1 & EEDO 
                   when mes_mega_reg_addr_i = "100011" else
 
-      aMconf      when mes_mega_reg_addr_i(5 downto 0) = "011110" else
-      CardMDR     when  mes_mega_reg_addr_i = "011111" else
       "111100" & PFXN 
                   when mes_mega_reg_addr_i = "110101" else
       (others => '0');
@@ -372,10 +374,7 @@ begin
   DecMDR <= '1' when mes_mega_address(13 downto 6) = "00111110" and
                      CardMDR(7) = '0' and mes_mega_address(15 downto 14) = CardMDR(6 downto 5) else '0';
 
-  RloadEn <= '1' when CardMDR(3) = '0' 
-                      or (CardMDR(2) = '0' and soft_reset = '1')
-                      or (CardMDR(2) = '1' and mes_mega_address(15 downto 4) = "010000000000" and mes_mega_read = '1')
-                 else '0';
+  RloadEn <= '1' when CardMDR(3) = '0' or soft_reset = '1' else '0';
 
   -- Registers
   process(all)
@@ -383,42 +382,41 @@ begin
     if rising_edge(clock) then
       if (slot_reset = '1') then
         -- Reset values
-        PF0_RV <= "00";
-        CardMDR    <= "00110000"; -- Config at 4F80, SCC enabled
-        aMconf     <= "11111111"; -- All features enabled
-        AddrM0     <= "00000000";
-        AddrM1     <= "00000000";
-        AddrM2     <= "0000000";
-        AddrFR     <= "0000000";  -- shift addr Flash Rom x 64κ
-        aAddrFR    <= "0000000";
+        PF0_RV    <= "00";
+        CardMDR   <= "00110000"; -- Config at 4F80, SCC enabled
+        aMconf    <= "11111111"; -- All features enabled
+        AddrM0    <= "00000000";
+        AddrM1    <= "00000000";
+        AddrM2    <= "0000000";
+        AddrFR    <= "0000000";  -- shift addr Flash Rom x 64κ
         -- Bank 1
-        aR1.Mask   <= "11111000"; -- 0000h-07FFh + |
-        aR1.Addr   <= "01010000"; -- 5000h         | = 5000h-57FFh
-        aR1.Reg    <= "00000000"; -- Page 0 (Relative)
-        aR1.Mult   <= "10000101"; -- Enable page registers, 16kB pages
-        aR1.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
-        aR1.AdrD   <= "01000000"; -- Bank Addr 4000h
+        R1.Mask   <= "11111000"; -- 0000h-07FFh + |
+        R1.Addr   <= "01010000"; -- 5000h         | = 5000h-57FFh
+        R1.Reg    <= "00000000"; -- Page 0 (Relative)
+        R1.Mult   <= "10000101"; -- Enable page registers, 16kB pages
+        R1.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        R1.AdrD   <= "01000000"; -- Bank Addr 4000h
         -- Bank 2
-        aR2.Mask   <= "11111000"; -- 0000h-07FFh + |
-        aR2.Addr   <= "01110000"; -- 7000h         | = 7000h-77FFh
-        aR2.Reg    <= "00000001"; -- Page 1 (Relative)
-        aR2.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
-        aR2.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
-        aR2.AdrD   <= "01100000"; -- Bank Addr 6000h
+        R2.Mask   <= "11111000"; -- 0000h-07FFh + |
+        R2.Addr   <= "01110000"; -- 7000h         | = 7000h-77FFh
+        R2.Reg    <= "00000001"; -- Page 1 (Relative)
+        R2.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        R2.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        R2.AdrD   <= "01100000"; -- Bank Addr 6000h
         -- Bank 3
-        aR3.Mask   <= "11111000"; -- 0000h-07FFh + |
-        aR3.Addr   <= "10010000"; -- 9000h         | = 9000h-97FFh
-        aR3.Reg    <= "00000010"; -- Page 2 (Relative)
-        aR3.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
-        aR3.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
-        aR3.AdrD   <= "10000000"; -- Bank Addr 8000h
+        R3.Mask   <= "11111000"; -- 0000h-07FFh + |
+        R3.Addr   <= "10010000"; -- 9000h         | = 9000h-97FFh
+        R3.Reg    <= "00000010"; -- Page 2 (Relative)
+        R3.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        R3.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        R3.AdrD   <= "10000000"; -- Bank Addr 8000h
         -- Bank 4
-        aR4.Mask   <= "11111000"; -- 0000h-07FFh + |
-        aR4.Addr   <= "10110000"; -- B000h         | = B000h-B7FFh
-        aR4.Reg    <= "00000011"; -- Page 3 (Relative)
-        aR4.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
-        aR4.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
-        aR4.AdrD   <= "10100000"; -- Bank Addr A000h
+        R4.Mask   <= "11111000"; -- 0000h-07FFh + |
+        R4.Addr   <= "10110000"; -- B000h         | = B000h-B7FFh
+        R4.Reg    <= "00000011"; -- Page 3 (Relative)
+        R4.Mult   <= "10001100"; -- Enable page registers, disable bank, 8kB pages
+        R4.MaskR  <= "00111111"; -- Size "Cartrige" 64 Pages
+        R4.AdrD   <= "10100000"; -- Bank Addr A000h
         -- EEPROM
         EECS1 <= '0'; EECK1 <= '0'; EEDI1 <= '0';
       else
@@ -426,11 +424,6 @@ begin
         -- Load registers
         if (RloadEn = '1') then
           Mconf <= aMconf;
-          AddrFR <= aAddrFR;
-          R1 <= aR1;
-          R2 <= aR2;
-          R3 <= aR3;
-          R4 <= aR4;
         end if;
 
         -- Port #F0 decription
@@ -471,38 +464,41 @@ begin
 
         -- Mapped I/O port access on 8F80 ( 0F80, 4F80, CF80 ) Cart mode resister write
         if (mem_memreg_write_r = '1') then
-          if (mes_mega_reg_addr_r = "000000" or mes_mega_reg_addr_r = "011111") then CardMDR <= mem_memreg_writedata_r; end if;
-          if (mes_mega_reg_addr_r = "011110" and (mem_memreg_writedata_r(7) = '1' or mem_memreg_writedata_r(3 downto 0) /= "1111" )) then aMconf <= mem_memreg_writedata_r; end if;
-
-          if (mes_mega_reg_addr_r = "000001") then AddrM0  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "000010") then AddrM1  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "000011") then AddrM2  <= mem_memreg_writedata_r(6 downto 0); end if;
-          if (mes_mega_reg_addr_r = "000101") then aAddrFR  <= mem_memreg_writedata_r(6 downto 0); end if;
+          if (mes_mega_reg_addr_r = "000000") then CardMDR  <= mem_memreg_writedata_r; end if;
           ----------------------------------------------------------------------------------------
-          if (mes_mega_reg_addr_r = "000110") then aR1.Mask  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "000111") then aR1.Addr  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001000") then aR1.Reg   <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001001") then aR1.Mult  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001010") then aR1.MaskR <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001011") then aR1.AdrD  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001100") then aR2.Mask  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001101") then aR2.Addr  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001110") then aR2.Reg   <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "001111") then aR2.Mult  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010000") then aR2.MaskR <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010001") then aR2.AdrD  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010010") then aR3.Mask  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010011") then aR3.Addr  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010100") then aR3.Reg   <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010101") then aR3.Mult  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010110") then aR3.MaskR <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "010111") then aR3.AdrD  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011000") then aR4.Mask  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011001") then aR4.Addr  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011010") then aR4.Reg   <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011011") then aR4.Mult  <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011100") then aR4.MaskR <= mem_memreg_writedata_r ; end if;
-          if (mes_mega_reg_addr_r = "011101") then aR4.AdrD  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "000001") then AddrM0   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "000010") then AddrM1   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "000011") then AddrM2   <= mem_memreg_writedata_r(6 downto 0); end if;
+          if (mes_mega_reg_addr_r = "000101") then AddrFR   <= mem_memreg_writedata_r(6 downto 0); end if;
+          ----------------------------------------------------------------------------------------
+          if (mes_mega_reg_addr_r = "000110") then R1.Mask  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "000111") then R1.Addr  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001000") then R1.Reg   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001001") then R1.Mult  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001010") then R1.MaskR <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001011") then R1.AdrD  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001100") then R2.Mask  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001101") then R2.Addr  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001110") then R2.Reg   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "001111") then R2.Mult  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010000") then R2.MaskR <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010001") then R2.AdrD  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010010") then R3.Mask  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010011") then R3.Addr  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010100") then R3.Reg   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010101") then R3.Mult  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010110") then R3.MaskR <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "010111") then R3.AdrD  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011000") then R4.Mask  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011001") then R4.Addr  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011010") then R4.Reg   <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011011") then R4.Mult  <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011100") then R4.MaskR <= mem_memreg_writedata_r ; end if;
+          if (mes_mega_reg_addr_r = "011101") then R4.AdrD  <= mem_memreg_writedata_r ; end if;
+          ----------------------------------------------------------------------------------------
+          if (mes_mega_reg_addr_r = "011110" and (mem_memreg_writedata_r(7) = '1' or mem_memreg_writedata_r(3 downto 0) /= "1111" ))
+                                              then aMconf   <= mem_memreg_writedata_r; end if;
+          if (mes_mega_reg_addr_r = "011111") then CardMDR  <= mem_memreg_writedata_r ; end if;
           ----------------------------------------------------------------------------------------
           if (mes_mega_reg_addr_r = "100011") then EECS1 <= mem_memreg_writedata_r(3);
                                         EECK1 <= mem_memreg_writedata_r(2);
@@ -519,7 +515,6 @@ begin
                                     SccPlus_AllRam = '0' and SccPlus_B0Ram = '0')))
         then
           R1.Reg <= mem_nonreg_writedata_r;
-          aR1.Reg <= mem_nonreg_writedata_r;
         end if;
 
         -- Memory mapped I/O port access on R2 Bank resister write
@@ -530,7 +525,6 @@ begin
                                      SccPlus_AllRam = '0' and SccPlus_B1Ram = '0')))
         then
           R2.Reg <= mem_nonreg_writedata_r;
-          aR2.Reg <= mem_nonreg_writedata_r;
         end if;
 
         -- Memory mapped I/O port access on R3 Bank resister write
@@ -541,7 +535,6 @@ begin
                                      (SccPlus_B2Ram = '0' or SccPlus_Enable = '0'))))
         then
           R3.Reg <= mem_nonreg_writedata_r;
-          aR3.Reg <= mem_nonreg_writedata_r;
         end if;
 
         -- Memory mapped I/O port access on R4 Bank resister write
@@ -552,7 +545,6 @@ begin
                                      SccPlus_AllRam = '0')))
         then
           R4.Reg <= mem_nonreg_writedata_r;
-          aR4.Reg <= mem_nonreg_writedata_r;
         end if;
 
       end if;
