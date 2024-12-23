@@ -11,6 +11,8 @@ SPC     equ     0               ; 1 = for Arabic and Korean computers
                                 ; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 
+VERBOSE_CONFIG equ 0            ; 1 = show full config data
+                                ; 0 = normal output
 
 ;************************
 ;***                  ***
@@ -574,7 +576,7 @@ FMROM:
 
         ld      a,%00000100
         ld      de,ssr08
-        ld      bc,#2001                ; >8Kb
+        ld      bc,#2001                ; SRSize = 4 : <= 8Kb
         or      a
         sbc     hl,bc
         exx
@@ -584,7 +586,7 @@ FMROM:
 
         ld      a,%00000101
         ld      de,ssr16
-        ld      bc,#4001-#2001          ; (#2000) >16kB
+        ld      bc,#4001-#2001          ; SRSize = 5 : (#2000) <= 16kB
         sbc     hl,bc
         exx
         sbc     hl,bc
@@ -593,7 +595,7 @@ FMROM:
 
         ld      a,%00000110
         ld      de,ssr32
-        ld      bc,#8001-#4001          ; (#4000) >32kb
+        ld      bc,#8001-#4001          ; SRSize = 6 : (#4000) <= 32kB
         sbc     hl,bc
         exx
         sbc     hl,bc
@@ -602,7 +604,7 @@ FMROM:
 
         ld      a,%00001110
         ld      de,ssr48
-        ld      bc,#C001-#8001          ; (#4000) >48kB
+        ld      bc,#C001-#8001          ; SRSize = 14 : (#4000) <= 48kB
         sbc     hl,bc
         exx
         sbc     hl,bc
@@ -611,7 +613,7 @@ FMROM:
 
         ld      a,%00000111
         ld      de,ssr64
-        ld      bc,#4000                ; #10001-#C001 >64kB
+        ld      bc,#4000                ; SRSize = 7 : #10001-#C001 <= 64kB
         sbc     hl,bc
         exx
         sbc     hl,bc
@@ -1492,7 +1494,7 @@ Csm80b:
 ; test print Size-start metod
         ld      a,(F_V)                 ; verbose mode?
         or      a
-        jr      z,Csm81
+        jr      z,SFM80
 
         print   Strm_S
         ld      a,(Record+#3D)
@@ -1504,84 +1506,8 @@ Csm80b:
         call    HEXOUT
         print   ONE_NL_S
 
-Csm81:  ld      a,(Record+#3D)
-        and     #0F
-        jp      SFM80                   ; mapper ROM
-
-; Search free space in flash
-SFM01:
-;find
-        ld      e,a
-        push    de
-
-        ld      a,(TPASLOT1)            ; reset 1 page
-        ld      h,#40
-        call    ENASLT
-
-        ld      a,(F_V)                 ; verbose mode?
-        or      a
-        jr      z,SFM01A
-
-        print   FNRE_S
-
-        pop     de
-        push    de
-        ld      a,d                     ; print N record
-        call    HEXOUT
-        ld      e,"-"
-        ld      c,_CONOUT
-        call    DOS
-        ld      a,(ix+2)                ; print N FlashBlock
-        call    HEXOUT
-        ld      e,"-"
-        ld      c,_CONOUT
-        call    DOS
-        pop     de
-
-        push    de
-        ld      a,e                     ; print N Bank
-        call    HEXOUT
-        print   ONE_NL_S
-
-SFM01A:
-        pop     de
-
-        ld      a,(Record+#3D)
-        and     #0F
-        cp      6
-        ld      a,e
-        jr      c,SFM70
-        rlc     a
-SFM70:
-        ld      (Record+#25),a          ; R1Reg
-        inc     a
-        ld      (Record+#2B),a          ; R2Reg
-        inc     a
-        ld      (Record+#31),a          ; R3Reg
-        inc     a
-        ld      (Record+#37),a          ; R4Reg
-
-        ld      a,e
-        rlc     a
-        rlc     a
-        rlc     a
-        rlc     a
-        ld      b,a
-        ld      a,(Record+#3D)
-        and     #0F
-        or      b
-        ld      (Record+#3D),a
-
-        ld      d,1
-        ld      e,(ix+2)
-        ld      a,d
-        ld      (multi),a
-
-        jp      DEFMR1
-
+; mapper ROM
 SFM80:
-        xor     a
-        ld      (multi),a
 
 ; Size  - size file 4 byte
 ; calc blocks len
@@ -1635,44 +1561,46 @@ DEF11:
 ; Configure cart register and start ROM
 ; ix - directory entry pointer
 run_card:
-        ld      hl,Record
-        ld      de,#c100
-        ld      bc,#40
-        ldir
-        ld      hl,reconf_begin
-        ld      de,#c000
-        ld      bc,reconf_end - reconf_begin
-        ldir
         print   ONE_NL_S
         print   Prg_Su_S
-        ld      a,(F_R)
-        or      a
-        jp      nz, #c000
-        print   Prg_Reb_S
-        xor     a
-        jp      #c000
-
-reconf_begin:
-        push    af
         ld      a,(ERMSlt)              ; restore slot
         ld      h,#40
         call    ENASLT
         ld      a,%00111001             ; enable delayed reconfiguration
         ld      (CardMDR),a
-        ld      a,(#c102)               ; set start block
+        ld      a,(Record+2)            ; set start block
         ld      (CardMDR+#05),a
-        ld      hl,#c100                ; configure mapper
+        call    HEXOUT
+        ld      hl,Record               ; configure mapper
         ld      bc,#23
         add     hl,bc                   ; config data
         ld      de,CardMDR+#06
+    if VERBOSE_CONFIG=0
         ld      bc,25                   ; all but CardMDR
         ldir
+    else
+        ld      b,25
+lll:    ld      a,(hl)
+        ld      (de),a
+        inc     hl
+        inc     de
+        push    hl
+        push    de
+        push    bc
+        call    HEXOUT
+        pop     bc
+        pop     de
+        pop     hl
+        djnz    lll
+    endif
         ld      a,(hl)                  ; CardMDR from RCP
         or      a,%10001000             ; disable config register and enable delayed reconfiguration
         ld      (de),a
-        pop     af
+        call    HEXOUT
+        ld      a,(F_R)
         or      a
-        jr      nz, reconf_exit
+        jr      nz, rc_exit
+        print   Prg_Reb_S
 
         ; reboot MSX
         in      a,(#F4)                 ; read from F4 port on MSX2+
@@ -1687,22 +1615,16 @@ reconf_begin:
    endif
         dw      0                       ; address
 
-reconf_exit:
+rc_exit:
         ; leave to DOS instead of reboot
         ld      a,(TPASLOT1)
         ld      h,#40
-        call    ENASLT
-        ld      a,(TPASLOT2)
-        ld      h,#80
         call    ENASLT
         ld      de, Exit_S
         ld      c,_STROUT
         call    DOS
         ld      c,_TERM0
         jp      DOS
-
-reconf_end:
-        nop
 
 
 ;-----------------------------------------------------------------------------
@@ -2220,7 +2142,6 @@ FILENAME:
 Size:   db      0,0,0,0
 Record: ds      #40
 SRSize: db      0
-multi   db      0
 ROMABCD:
         db      0
 ROMJT0: db      0
@@ -2324,8 +2245,6 @@ FileOver_S:
         db      "Please select another file...",13,10,"$"
 MRSQ_S: db      10,13,"The ROM's size is between 32kb and 64kb. Create Mini ROM entry? (y/n)",13,10,"$"
 Strm_S: db      "MMROM-CSRM: $"
-FNRE_S: db      "Using Record-FBlock-NBank for Mini ROM",#0D,#0A
-        db      "[Multi ROM entry] - $"
 FDE_S:  db      "Found free directory entry at: $"
 NR_I_S: db      "Name of directory entry: $"
 FileSZH:
