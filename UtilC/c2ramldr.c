@@ -1,11 +1,7 @@
-/* File size change tool v1.0
-   By Konamiman 10/2014
-
-   Compilation command line:
-   
-   sdcc --code-loc 0x180 --data-loc 0 -mz80 --disable-warning 196
-        --no-std-crt0 crt0_msxdos_advanced.rel fsize.c
-   hex2bin -e com fsize.ihx
+/* Carnivore2 Cartridge's ROM->RAM Loader
+   Reverse-engineered from original c2ramldr tool
+   Original tool is made by RBSC
+   Reversed engineered by Tim Brugman (SHS)
 */
 
 /* Includes */
@@ -18,34 +14,12 @@
 #include <dos.h>
 #include <printf.h>
 
-//#include <newTypes.h>
-//#include <msxSystemVariables.h>
 #include <msxBIOS.h>
 #include <msxDOS.h>
 
 #include <textmode_MSX.h>
 
 /* Defines */
-
-/* Strings */
-
-const char* ssrMAP = "64kb or more (mapper is required)";
-const char* ssr64 = "64kb";
-const char* ssr48 = "48kb";
-const char* ssr32 = "32kb";
-const char* ssr16 = "16kb";
-const char* ssr08 = "8kb or less";
-
-const char* SelMapT = "Selected ROM's mapper type: ";
-const char* NoAnalyze = "The ROM's mapper type is set to: ";
-const char* CTC_S = "Do you confirm this mapper type? (y/n)\r\n";
-const char* CoTC_S = "\r\nManual mapper type selection:\r\n";
-const char* Num_S = "Your selection - ";
-const char* MRSQ_S = "\r\nThe ROM's size is between 32kb and 64kb. Create Mini ROM entry? (y/n)\r\n";
-const char* Strm_S = "MMROM-CSRM: ";
-const char* FNRE_S = "Using Record-FBlock-NBank for Mini ROM\r\n"
-                     "[Multi ROM entry] - ";
-const char* FL_er_S = "\r\nWriting into cartridge's RAM failed!\r\n";
 
 /* System-RAM definitions */
 #define SCR0WID    ((uint8_t *)0xF3AE)     // Screen0 width
@@ -663,8 +637,7 @@ bool DetectMapper(void)
     if (DMAP == 5) {
         // MiniROM
 
-        // Default is 'start on reset'
-        uint8_t method = 1;
+        // Default base address for bank 0
         record[0x28] = id[0].ji & 0xc0; // Bank 0 - addr
 
         if (SRSize < 6) {
@@ -678,15 +651,6 @@ bool DetectMapper(void)
             record[0x2C] = 0xAD;    // Bank 1 - off
             record[0x32] = 0xAD;    // Bank 2 - off
             record[0x38] = 0xAD;    // Bank 3 - off
-
-            if (id[0].jt == 0x41) {
-                if ((id[0].ji & 0xc0) == 0x40) {
-                    method = 2; // start on #4000
-                }else
-                if ((id[0].ji & 0xc0) == 0x80) {
-                    method = 6; // start Jmp(8002)
-                }
-            }
         }else
         if (SRSize < 7) {
             // =< 32kB
@@ -695,23 +659,10 @@ bool DetectMapper(void)
             record[0x32] = 0xAD;    // Bank 2 - off
             record[0x38] = 0xAD;    // Bank 3 - off
 
-            if (id[0].jt == 0) {
-                if (id[1].jt == 0x41) {
-                    if ((id[1].ji & 0xc0) == 0x80) {
-                        method = 6; // start Jmp(8002)
-                    }
-                }
-            }else{
-                if ((id[0].ji & 0xc0) == 0x40) {
-                    if (id[0].jt == 0x41) {
-                        method = 2; // start on #4000
-                    }
-                }else
-                if ((id[0].ji & 0xc0) == 0x80) {
-                    record[0x28] = 0x80; // Bank 0 - addr
-                    record[0x2E] = 0xC0; // Bank 1 - addr
-                    method = 6;
-                }
+            if (id[0].jt != 0 &&
+               (id[0].ji & 0xc0) == 0x80) {
+                record[0x28] = 0x80; // Bank 0 - addr
+                record[0x2E] = 0xC0; // Bank 1 - addr
             }
         }else
         if (SRSize == 7) {
@@ -721,15 +672,6 @@ bool DetectMapper(void)
             record[0x32] = 0xAD;    // Bank 2 - off
             record[0x38] = 0xAD;    // Bank 3 - off
             record[0x28] = 0x00;    // Bank 0 - addr = 0
-
-            if (id[0].jt == 0) {
-                if (id[1].jt == 0x41) {
-                    method = 2; // start jmp(4002)
-                }else
-                if (id[2].jt == 0x41) {
-                    method = 6; // start jmp(8002)
-                }
-            }
         }else{
             // 48kB ROM
             record[0x26] = 0xA5;    // Bank 0 - Size 16kB, no Ch.reg
@@ -738,9 +680,6 @@ bool DetectMapper(void)
             record[0x38] = 0xAD;    // Bank 3 - off
             record[0x2B] = 1;       // correction for bank 1
 
-            if (id[0].jt == 0x41) {
-                method = 2; // start jmp(4002)
-            }else
             if (id[0].jt == 0) {
                 if (id[1].jt == 0) {
                     if (id[2].jt == 0) {
@@ -752,9 +691,6 @@ bool DetectMapper(void)
                     record[0x28] = 0x00; // Bank 0 - addr
                     record[0x2E] = 0x40; // Bank 1 - addr
                     record[0x34] = 0x80; // Bank 2 - addr
-                    if (id[1].jt == 0x41) {
-                        method = 2; // start jmp(4002)
-                    }
                 }
             }else{
                 if ((id[0].ji & 0xc0) == 0) {
@@ -767,19 +703,10 @@ bool DetectMapper(void)
 
         // label Csm05
         record[0x3D] = SRSize;
-        record[0x3E] = method;
-
-        if (method == 1) {
-            record[0x3C] &= ~4; // set reset bit to match 01 at #3E
-        }else{
-            record[0x3C] |= 4;  // zero reset bit to match 01 at #3E
-        }
 
         if (flag_verbose) {
             print("MMROM-CSRM: ");
             hexout(record[0x3D]);
-            putchar('-');
-            hexout(record[0x3E]);
             putchar('-');
             hexout(record[0x26]);
             putchar('-');
