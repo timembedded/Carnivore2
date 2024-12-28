@@ -5,6 +5,7 @@
 
 COMS := \
 	test80c.com \
+	testdos.com \
 	c2ramldr.com
 
 BUILD_DIR := $(PWD)/build

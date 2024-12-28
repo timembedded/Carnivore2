@@ -185,6 +185,11 @@ typedef uint8_t  FILEH;
 /*
 	MSX-DOS Call Errors
 */
+#define ERR_ICLUS   0xb0	//Invalid cluster number or sequence (Nextor 2.1)
+#define ERR_BFSZ    0xb1	//Bad file size, attempt to mount a file that is smaller than 512 bytes or larger than 32 MBytes (Nextor 2.1)
+#define ERR_FMNT    0xb2	//File is mounted, an attempt to open or alter a mounted file, or to perform any other disallowed operation involving a mounted file, has been made (Nextor 2.1)
+#define ERR_PUSED   0xb3	//Partition is already in use, an attempt has made to map a drive to a driver, device and starting sector number; but there is already another drive which
+                        	//  is mapped to the same combination of driver, device, logical unit, and starting sector number (Nextor 2.1)
 #define ERR_IPART   0xb4	//Invalid partition number (Nextor 2.1)
 #define ERR_ISBFN   0xb8	//Invalid sub-function number: The sub-function number passed to the IOCTL function (function 4Bh) was invalid.
 #define ERR_EOL     0xb9	//Internal error should never occur.
@@ -225,7 +230,7 @@ typedef uint8_t  FILEH;
 #define ERR_IBDOS   0xdc	//Invalid MSX-DOS call: An MSX-DOS call was made with an illegal function number. Most illegal function calls return no error, but this error may be returned if a "get previous error code" function call is made.
 #define ERR_NORAM   0xde	//Not enough memory: MSX-DOS has run out of memory in its 16k kernel data segment. Try reducing the number of sector buffers or removing some environment strings. Also occurs if there are no free segments for creating the RAMdisk.
 #define ERR_INTER   0xdf	//Internal error: Should never occur.
-#define ERR_FIRST   ERR_ISBFN
+#define ERR_FIRST   0x80	//Reserve everythinf from 0x80 and abose as errors
 
 /* Disk driver routines */
 #define CALLB0      0x403F
@@ -516,39 +521,57 @@ typedef struct {
 	bool kbhitBios(void) __sdcccall(1);
 #endif
 
+// Universal MSX-DOS 1 or 2 functions
+void  exit(uint8_t code);
+FILEH fopen(char *filename, char mode);
+bool  fcreate(char *filename, char mode, char attributes);
+bool  fclose(FILEH fh);
+bool  remove(char *filename);
+RETW  fread(char* buf, uint16_t size, FILEH fh);
+RETW  fwrite(char* buf, uint16_t size, FILEH fh);
+FILEH fflush(FILEH fh);
+RETW  fputs(char* str, FILEH fh);
+char* fgets(char* buf, uint16_t size, FILEH fh);
+RETDW fseek(FILEH fh, uint32_t offset, uint8_t origin);
+RETDW ftell(FILEH fh);
+RETDW filesize(char *filename);
+bool  fileexists(char* filename);
+
 // MSX-DOS 1.x
 void  dos_initializeFCB(void);
 RETB  dosVersion(void) __sdcccall(1);
-void  exit(void);
+RETB  supportDos2(void) __sdcccall(1);
 RETB  getCurrentDrive(void) __sdcccall(1);
 char* getProgramPath(char *path);
 RETW  availableDrives() __sdcccall(0);
 void  getSystemDate(SYSTEMDATE_t *date) __sdcccall(1);
 void  getSystemTime(SYSTEMTIME_t *time) __sdcccall(1);
 
-bool  fopen(char *filename) __sdcccall(1);
-bool  fcreate(char *filename) __sdcccall(1);
-bool  fclose(void) __sdcccall(1);
-bool  remove(char *filename) __sdcccall(1);
-RETW  fread(char* buf, uint16_t size) __sdcccall(1);
-RETW  fwrite(char* buf, uint16_t size) __sdcccall(1);
-bool  fflush();
-RETW  fputs(char* str);
-char* fgets(char* buf, uint16_t size);
-RETDW fseek(uint32_t offset, uint8_t origin);
-RETDW ftell(void);
-RETDW filesize(char *filename);
-bool  fileexists(char* filename);
+void  dos1_exit(void) __sdcccall(1);
+bool  dos1_fopen(char *filename) __sdcccall(1);
+bool  dos1_fcreate(char *filename) __sdcccall(1);
+bool  dos1_fclose(void) __sdcccall(1);
+bool  dos1_remove(char *filename) __sdcccall(1);
+RETW  dos1_fread(char* buf, uint16_t size) __sdcccall(1);
+RETW  dos1_fwrite(char* buf, uint16_t size) __sdcccall(1);
+bool  dos1_fflush();
+RETW  dos1_fputs(char* str);
+char* dos1_fgets(char* buf, uint16_t size);
+RETDW dos1_fseek(uint32_t offset, uint8_t origin);
+RETDW dos1_ftell(void);
+RETDW dos1_filesize(char *filename);
+bool  dos1_fileexists(char* filename);
 
 void setTransferAddress(void *memaddress) __sdcccall(1);
-ERRB readAbsoluteSector(uint8_t drive, uint16_t startsec, uint8_t nsec);
-ERRB writeAbsoluteSector(uint8_t drive, uint16_t startsec, uint8_t nsec);
+ERRB readAbsoluteSector(uint8_t drive, uint32_t startsec, uint8_t nsec);
+ERRB writeAbsoluteSector(uint8_t drive, uint32_t startsec, uint8_t nsec);
 
 // MSX-DOS 2.x
 ERRB dos2_getDriveParams(char drive, DPARM_info *param) __sdcccall(1);
 ERRB dos2_getCurrentDirectory(char drive, char *path) __sdcccall(1);
 ERRB dos2_parsePathname(char* str, PATH_parsed *info) __sdcccall(1);
 
+void dos2_exit(uint8_t code) __sdcccall(1);
 FILEH dos2_fopen(char *filename, char mode) __sdcccall(0);
 FILEH dos2_fcreate(char *filename, char mode, char attributes) __sdcccall(0);
 FILEH dos2_fflush(FILEH fh) __sdcccall(1);
@@ -572,7 +595,6 @@ void dos2_setAbortRoutine(void *routine) __sdcccall(1);
 RETW dos2_getScreenSize(void) __sdcccall(1);
 ERRB dos2_getEnv(char* name, char* buffer, uint8_t buffer_size) __sdcccall(0);
 void dos2_explain(uint8_t error_code, char* buffer) __sdcccall(1);
-void dos2_exit(uint8_t code) __sdcccall(1);
 
 // NextorDOS Only
 RETB nxtr_setFastOut(uint8_t value);

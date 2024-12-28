@@ -71,20 +71,7 @@
 #define MConf      ((uint8_t *)(0x4F80+30))
 
 
-static uint8_t GetDosVersion(void) __naked
-{
-__asm
-
-  ld    C,#DOSVER
-  call  BDOS
-  ld    A,B
-  ret
-
-__endasm;
-}
-
 /* Global variables */
-static bool is_dos2 = false;
 static uint8_t ERMSlt;
 
 #define TEST_ARGUMENTS 0
@@ -591,7 +578,7 @@ bool DetectMapper(void)
             }
         }
 
-        if (SRSize <= 6 /* <= 32kB */) {
+        if (SRSize != 0 && SRSize <= 6 /* <= 32kB */) {
             switch(BMAP & 0xFF) {
                 case 0x02: /* ZanacEX */
                 case 0x08:
@@ -729,12 +716,9 @@ int main(char** argv, int argc)
     print("Carnivore2 MultiFunctional Cartridge RAM Loader v2.00\r\n"
           "(C) 2015-2024 RBSC/SHS. All rights reserved\r\n\r\n");
 
-    if (GetDosVersion() >= 2) {
-        is_dos2 = true;
-    }
-
 #if TEST_ARGUMENTS
-    printf("arguments: %d, dosver: %d\r\n", argc, a);
+    uint8_t dosver = dosVersion();
+    printf("arguments: %d, dosver: %d\r\n", argc, dosver);
     for(uint8_t i = 0; i < (uint8_t)argc; i++) {
         printf("%d: [%s]\r\n", i, argv[i]);
     }
@@ -799,10 +783,6 @@ int main(char** argv, int argc)
         return 0;
     }
 
-    if (flag_verbose && is_dos2) {
-        printf("DOS2 is supported\r\n");
-    }
-
     // Find the cartridge
     if (!FindSlot()) {
         print("Carnivore2 cartridge was not found\r\n");
@@ -820,16 +800,17 @@ int main(char** argv, int argc)
             break;
         }
     }
-    if (fopen(rcp_file)) {
+    FILEH fh = fopen(rcp_file, O_RDONLY);
+    if (fh < ERR_FIRST) {
         if (flag_verbose) {
             printf("Autodetection ignored, using data from RCP file %s\r\n", rcp_file);
         }
-        if (!fread(rcp_data, sizeof(rcp_data))) {
+        if (!fread(rcp_data, sizeof(rcp_data), fh)) {
             print("File read error!\r\n");
             return 1;
         }
         rcp_loaded = true;
-        fclose();
+        fclose(fh);
 
         // Patch RCP data
         rcp_data[0x04] |= 0x20;
@@ -841,8 +822,13 @@ int main(char** argv, int argc)
     // Open ROM file
     printf("\r\nOpening file: %s\r\n", filename);
     int32_t rom_size = filesize(filename);
-    if (rom_size < 0 || !fopen(filename)) {
+    if (rom_size < 0) {
         print("File not found!\r\n");
+        return 1;
+    }
+    fh = fopen(filename, O_RDONLY);
+    if (fh >= ERR_FIRST) {
+        print("Could not open ROM file!\r\n");
         return 1;
     }
     if (flag_verbose) {
@@ -925,7 +911,7 @@ int main(char** argv, int argc)
     uint8_t PreBnk = 0;              // no shift for the first block
     while(blocks8k--) {
         // load portion from file
-        if (!fread(block_buffer, blocks8k? 0x2000 : lastsize)) {
+        if (!fread(block_buffer, blocks8k? 0x2000 : lastsize, fh)) {
             print("\r\nFile read error!\r\n");
             return 1;
         }
@@ -947,7 +933,7 @@ int main(char** argv, int argc)
     }
     print("\r\n");
 
-    fclose();
+    fclose(fh);
 
     print("\r\nThe ROM image was successfully written into cartridge's RAM!\r\n");
 

@@ -14,7 +14,7 @@
     - v1.0 (23/10/2024) first version.
 ============================================================================= */
 
-#include "include/newTypes.h"
+#include "include/types.h"
 #include "include/msxSystemVariables.h"
 #include "include/msxBIOS.h"
 #include "include/msxDOS.h"

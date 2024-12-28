@@ -1,7 +1,7 @@
 #include "dos.h"
 
 
-RETDW dos2_fseek(char fh, uint32_t offset, char origin) __naked __sdcccall(0)
+RETDW dos2_fseek(FILEH fh, uint32_t offset, char origin) __naked __sdcccall(0)
 {
 	fh;
 	offset;

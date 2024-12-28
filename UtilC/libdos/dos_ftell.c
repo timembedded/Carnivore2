@@ -1,7 +1,10 @@
 #include "dos.h"
 
 
-inline RETDW ftell(void)
+RETDW ftell(FILEH fh)
 {
-	return ((FCB*)SYSFCB)->rndRecord;
+	if (supportDos2())
+		return dos2_ftell(fh);
+	else
+		return dos1_ftell();
 }

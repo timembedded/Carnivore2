@@ -4,7 +4,13 @@
 
 bool fileexists(char *filename)
 {
-	bool result = fopen(filename);
-	dos_initializeFCB();
-	return result;
+	if (supportDos2()) {
+		FILEH fh = dos2_fopen(filename, O_RDONLY);
+		if (fh >= ERR_FIRST) {
+			return false;
+		}
+		dos2_fclose(fh);
+		return true;
+	}
+	return dos1_fileexists(filename);
 }

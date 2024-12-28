@@ -1,7 +1,11 @@
 #include "dos.h"
 
 
-inline bool fflush()
+FILEH fflush(FILEH fh)
 {
-	return fclose();
+	if (supportDos2())
+		return dos2_fflush(fh);
+	else {
+		return dos1_fflush();
+	}
 }

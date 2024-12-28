@@ -1,7 +1,7 @@
 #include "dos.h"
 
 
-ERRB dos2_fclose(char fh) __naked __sdcccall(1)
+ERRB dos2_fclose(FILEH fh) __naked __sdcccall(1)
 {
     fh;
 /*

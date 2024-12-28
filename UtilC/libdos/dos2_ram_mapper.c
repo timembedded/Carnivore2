@@ -23,7 +23,6 @@ static uint8_t _getJumpTable(void) __sdcccall(1);
 static uint8_t _mapperGetSegment(uint8_t page) __sdcccall(1);
 static void    _mapperSetSegment(uint8_t page, uint8_t segment) __sdcccall(1);
 
-
 //###################################################################
 // Public Functions
 
@@ -45,7 +44,7 @@ RETB mapperInit(void)
 	uint16_t *table = &_jumpTableAddress[1];
 
 	for (i = 0; i < 3; i++) {
-		*(table++) += *_jumpTableAddress;
+		*(table++) += _jumpTableAddress[0];
 	}
 
 	for (i = 0; i < 4; i++) {
@@ -236,6 +235,7 @@ inline void mapperSetOriginalSegmentBack(uint8_t page)
 static uint8_t _getJumpTable(void) __naked __sdcccall(1)
 {
 	__asm
+		push ix					// Turns out required; apparently the EXTBIOCALL modifies IX!
 		xor a
 		ld  de, #0x0402			// D=4 (Memory mapper DevID) E=2 (Get the routines jump table)
 		EXTBIOCALL
@@ -245,6 +245,7 @@ static uint8_t _getJumpTable(void) __naked __sdcccall(1)
 		ld  a, b
 		ld  (__slotMainMapper), a
 		ld  a, c				// Returns A = the free segments of primary mapper
+		pop ix
 		ret
 	__endasm;
 }
@@ -299,13 +300,10 @@ static void _mapperSetSegment(uint8_t page, uint8_t segment) __naked __sdcccall(
 		ld hl,(__jumpTableAddress + 4)
 
 	pageMult6andCall$:
-		ld  d,#0		// + (4 page)
+		ld  d,#0		// + (6 * page)
 		ld  e,c
-		sla e
-		sla e
+		rlc e
 		add hl,de
-
-		ld  e,c			// + (2 page)
 		add hl,de
 		add hl,de
 

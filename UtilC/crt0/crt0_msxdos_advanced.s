@@ -125,13 +125,15 @@ cont:   ld      hl,#0x100
         ld      (_heap_top),de
         pop     de
 
+        ; use prototype: int main(char** argv, int argc)
         call    _main
+        ; returns DE
 
         ;--- Step 4: Program termination.
         ;    Termination code for DOS 2 was returned on L.
 
         ld      c,#0x62   ;DOS 2 function for program termination (_TERM)
-        ld      b,a
+        ld      b,e    ;take low byte of returned int
         call    5      ;On DOS 2 this terminates; on DOS 1 this returns...
         ld      c,#0x0
         jp      5      ;...and then this one terminates

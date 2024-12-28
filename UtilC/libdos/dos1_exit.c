@@ -14,10 +14,10 @@ of that function call, and also the "Program Interface Specification", for
 details of what happens when a program terminates. This function call never
 returns to the caller.
 */
-void exit(uint8_t code)
+void dos1_exit(void) __naked
 {
-	if (supportDos2())
-		dos2_exit(code);
-	else
-		dos1_exit();
+	__asm
+		ld c,#TERM0
+		DOSJP
+	__endasm;
 }

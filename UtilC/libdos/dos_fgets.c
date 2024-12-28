@@ -1,16 +1,11 @@
 #include "dos.h"
 
 
-char* fgets(char *str, uint16_t size)
+char* fgets(char *str, uint16_t size, FILEH fh)
 {
-	char *p = str;
-	uint16_t ret;
-
-	while (--size) {
-		ret = fread(p, 1);
-		if (*p++ == '\n') break;
-		if (ret == 0xffc7) break;	// ERR_EOF
+	if (supportDos2())
+		return dos2_fgets(str, size, fh);
+	else {
+		return dos1_fgets(str, size);
 	}
-	*p = '\0';
-	return str;
 }

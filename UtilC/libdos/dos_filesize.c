@@ -4,10 +4,18 @@
 
 RETDW filesize(char *filename)
 {
-	RETDW size = -1;
-	if (fopen(filename)) {
-		size = ((FCB*)SYSFCB)->fileSize;
+	if (supportDos2()) {
+		RETDW size = -1;
+		FILEH fh = dos2_fopen(filename, O_RDONLY);
+		if (fh >= ERR_FIRST) {
+			return -1;
+		}
+		size = dos2_fseek(fh, 0, SEEK_END);
+		if (fh >= ERR_FIRST) {
+			return -1;
+		}
+		dos2_fclose(fh);
+		return size;
 	}
-	dos_initializeFCB();
-	return size;
+	return dos1_filesize(filename);
 }

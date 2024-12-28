@@ -1,7 +1,7 @@
 #include "dos.h"
 
 
-RETW dos2_fread(char* buf, uint16_t size, char fh) __naked __sdcccall(0)
+RETW dos2_fread(char* buf, uint16_t size, FILEH fh) __naked __sdcccall(0)
 {
   buf, size, fh;
 /*
