@@ -37,9 +37,14 @@ LIB_C_SRC := $(wildcard libcommon/*.c) $(wildcard libdos/*.c)
 LIB_S_SRC := $(wildcard libdos/*.s)
 LIB_RELS := $(addprefix $(BUILD_DIR)/,$(LIB_C_SRC:.c=.rel)) $(addprefix $(BUILD_DIR)/,$(LIB_S_SRC:.s=.rel))
 
+.PHONY: all
+all:
+	@"$(MAKE)" --no-print-directory libs
+	@"$(MAKE)" --no-print-directory c-tools
+
 .SECONDARY:
 .PHONY: c-tools
-c-tools: libs $(addprefix $(BUILD_DIR)/,$(COMS))
+c-tools: $(addprefix $(BUILD_DIR)/,$(COMS))
 
 TOOLS := $(CC) $(AS) $(AR) $(OBJCOPY)
 
@@ -53,14 +58,15 @@ prerequisites:
 .PHONY: libs
 libs:
 	@$(foreach libfile,$(LIBFILES),\
-		"$(MAKE)" -j --no-print-directory -C $(dir $(libfile)).. build/$(notdir $(libfile));)
-	@"$(MAKE)" -j --no-print-directory -C $(LIBS_DIR)/crt0
+		"$(MAKE)" --no-print-directory -C $(dir $(libfile)).. build/$(notdir $(libfile));)
+	@"$(MAKE)" --no-print-directory -C $(LIBS_DIR)/crt0
+
 -include $(BUILD_DIR)/*.d
 
 $(LIBFILES):
 	@echo Building $(notdir $@) ...
-	@"$(MAKE)" -j --no-print-directory -C $(dir $@).. build/$(notdir $@)
-	@"$(MAKE)" -j --no-print-directory -C $(LIBS_DIR)/crt0
+	@"$(MAKE)" --no-print-directory -C $(dir $@).. build/$(notdir $@)
+	@"$(MAKE)" --no-print-directory -C $(LIBS_DIR)/crt0
 
 $(BUILD_DIR)/%.com: $(BUILD_DIR)/%.rel $(COMS_CRT0) $(LIBFILES)
 	@echo Linking $(notdir $@) ...
