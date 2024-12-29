@@ -14,12 +14,12 @@
     - v1.0 (23/10/2024) first version.
 ============================================================================= */
 
-#include "include/types.h"
-#include "include/msxSystemVariables.h"
-#include "include/msxBIOS.h"
-#include "include/msxDOS.h"
+#include "types.h"
+#include "msxSystemVariables.h"
+#include "msxBIOS.h"
+#include "msxDOS.h"
 
-#include "include/textmode_MSX.h"
+#include "textmode_MSX.h"
 
 
 

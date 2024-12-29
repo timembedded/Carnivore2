@@ -5,15 +5,16 @@
 
 BUILD_DIR := build
 OUTPUT_DIR := output
-LIBS_DIR := .
+LIBS_DIR := ..
 
 COMS := \
-	c2ramldr.com
+	test80c.com \
+	testdos.com
 
-COMS_CRT0 := crt0/build/crt0_msxdos_advanced.rel
+COMS_CRT0 := ../crt0/build/crt0_msxdos_advanced.rel
 
 INCLUDES := \
-	include
+	../include
 
 DEFINES := \
 	MSXDOS
