@@ -62,8 +62,11 @@ set_location_assignment PIN_37 -to DAC_FLT
 set_location_assignment PIN_39 -to DAC_DEMP
 set_location_assignment PIN_40 -to pFlAdr[20]
 set_location_assignment PIN_43 -to pFlVpp
-set_location_assignment PIN_44 -to J2_2
-set_location_assignment PIN_45 -to J2_3
+set_location_assignment PIN_44 -to pSltReady_n
+set_location_assignment PIN_45 -to J2_2
+set_location_assignment PIN_46 -to J2_3
+set_location_assignment PIN_47 -to J2_4
+set_location_assignment PIN_48 -to J2_5
 set_location_assignment PIN_56 -to pSltDat[7]
 set_location_assignment PIN_57 -to pSltDat[6]
 set_location_assignment PIN_58 -to pSltDat[5]

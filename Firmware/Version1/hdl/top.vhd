@@ -64,6 +64,8 @@ entity top is
     pSltRsv5    : IN std_logic;
     pSltRsv16   : IN std_logic;
 
+    pSltReady_n : INOUT std_logic;
+
     -- FLASH ROM interface
     pFlAdr      : OUT std_logic_vector(22 downto 0);
     pFlDat      : INOUT std_logic_vector(7 downto 0);
@@ -95,8 +97,9 @@ entity top is
 
     -- DEBUG
     J2_2        : OUT std_logic;
-    J2_3        : OUT std_logic
-
+    J2_3        : OUT std_logic;
+    J2_4        : OUT std_logic;
+    J2_5        : OUT std_logic
 );
 end top;
 
@@ -314,6 +317,11 @@ begin
   -- Debug
   J2_2 <= count(0);
   J2_3 <= count(1);
+  J2_4 <= '0';
+  J2_5 <= '0';
+
+  -- Make '0' to unlock the Z80 bus, 'Z' to keep Z80 waiting till we're ready
+  pSltReady_n <= '0';
 
   process(sysclk)
   begin

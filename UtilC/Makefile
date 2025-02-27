@@ -44,7 +44,7 @@ all:
 
 .SECONDARY:
 .PHONY: c-tools
-c-tools: $(addprefix $(BUILD_DIR)/,$(COMS))
+c-tools: $(addprefix $(OUTPUT_DIR)/,$(COMS))
 
 TOOLS := $(CC) $(AS) $(AR) $(OBJCOPY)
 
@@ -58,7 +58,7 @@ prerequisites:
 .PHONY: libs
 libs:
 	@$(foreach libfile,$(LIBFILES),\
-		"$(MAKE)" --no-print-directory -C $(dir $(libfile)).. build/$(notdir $(libfile));)
+		"$(MAKE)" --no-print-directory -C $(abspath $(dir $(libfile))..) build/$(notdir $(libfile));)
 	@"$(MAKE)" --no-print-directory -C $(LIBS_DIR)/crt0
 
 -include $(BUILD_DIR)/*.d
@@ -72,8 +72,10 @@ $(BUILD_DIR)/%.com: $(BUILD_DIR)/%.rel $(COMS_CRT0) $(LIBFILES)
 	@echo Linking $(notdir $@) ...
 	@sdcc -o $(BUILD_DIR)/ $(CFLAGS) --no-std-crt0 $^
 	@objcopy -I ihex -O binary $(@:.com=.ihx) $@
+
+$(OUTPUT_DIR)/%.com: $(BUILD_DIR)/%.com
 	@mkdir -p $(OUTPUT_DIR)
-	@cp $@ $(OUTPUT_DIR)/$(notdir:$@)
+	@cp $< $@
 
 $(BUILD_DIR)/%.rel: %.c
 	@echo Compiling $< ...

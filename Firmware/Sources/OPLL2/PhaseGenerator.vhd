@@ -69,7 +69,7 @@ begin
   process(clk, reset)
 
     variable lastkey : std_logic_vector(MAXSLOT-1 downto 0); 
-    variable dphase : PHASE_TYPE;   
+    variable dphase : PHASE_TYPE;   -- 18-bit
     variable noise14 : std_logic;
     variable noise17 : std_logic;
     variable pgout_buf : PGOUT_TYPE;
