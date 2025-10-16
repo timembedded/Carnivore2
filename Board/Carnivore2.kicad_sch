@@ -38236,7 +38236,7 @@
 		)
 		(uuid "042cb1bc-a165-4eb3-ac4e-42ad027c7cfd")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 500.38 300.99 180)
 		(effects
@@ -38269,7 +38269,7 @@
 		)
 		(uuid "04f4fe85-63b7-4b53-b8e0-76607083e13d")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 469.9 341.63 180)
 		(effects
@@ -38489,7 +38489,7 @@
 		)
 		(uuid "12fd8dfa-778e-4c6b-a087-3f9005106983")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 469.9 184.15 180)
 		(effects
@@ -38511,7 +38511,7 @@
 		)
 		(uuid "150c5b6c-6bf9-4e59-9a29-c8c564f5549f")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 515.62 237.49 0)
 		(effects
@@ -38577,7 +38577,7 @@
 		)
 		(uuid "17a84f46-1fc1-493b-8124-ab447e07ba31")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 185.42 234.95 0)
 		(effects
@@ -38874,7 +38874,7 @@
 		)
 		(uuid "289a807a-4f50-4a5c-a330-84ed97b651cc")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 500.38 307.34 180)
 		(effects
@@ -38907,7 +38907,7 @@
 		)
 		(uuid "29ede3bc-e1a3-4f5b-8e14-5f87ad9015b5")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 317.5 196.85 0)
 		(effects
@@ -38929,7 +38929,7 @@
 		)
 		(uuid "2a8d55e8-2e92-4913-adfb-bdf8fa9696a1")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 393.7 237.49 180)
 		(effects
@@ -38940,7 +38940,7 @@
 		)
 		(uuid "2ae6a971-cc14-42eb-837b-edc6e6a28957")
 	)
-	(hierarchical_label "VCC5"
+	(hierarchical_label "+5V"
 		(shape passive)
 		(at 259.08 219.71 180)
 		(effects
@@ -39017,7 +39017,7 @@
 		)
 		(uuid "3194d5b7-0531-4097-9737-f51b05d80120")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 486.41 322.58 180)
 		(effects
@@ -39138,7 +39138,7 @@
 		)
 		(uuid "3984e98a-2661-4066-81ae-66b124e00551")
 	)
-	(hierarchical_label "VCC1.2"
+	(hierarchical_label "+1V2"
 		(shape passive)
 		(at 317.5 222.25 0)
 		(effects
@@ -39402,7 +39402,7 @@
 		)
 		(uuid "4774361e-a492-42d0-acc2-bd76c90f242e")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 154.94 133.35 0)
 		(effects
@@ -39523,7 +39523,7 @@
 		)
 		(uuid "4ec0a429-1f77-48ce-b5c5-0b65ea00d191")
 	)
-	(hierarchical_label "VCC5"
+	(hierarchical_label "+5V"
 		(shape passive)
 		(at 265.43 242.57 180)
 		(effects
@@ -39644,7 +39644,7 @@
 		)
 		(uuid "575d64ee-440f-4818-a12a-2bb98427f41e")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 142.24 54.61 0)
 		(effects
@@ -39699,7 +39699,7 @@
 		)
 		(uuid "5da48794-0009-4386-9c1d-0dec7ea0cd71")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 170.18 191.77 270)
 		(effects
@@ -39721,7 +39721,7 @@
 		)
 		(uuid "5e487707-96e4-4e42-85c5-c1daa500549f")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 80.01 180.34 180)
 		(effects
@@ -39886,7 +39886,7 @@
 		)
 		(uuid "6805206d-a4aa-4231-95b5-d2871e29f348")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 513.08 184.15 0)
 		(effects
@@ -39996,7 +39996,7 @@
 		)
 		(uuid "7379dab5-4952-4386-999c-db38403b0aa2")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 264.795 41.91 180)
 		(effects
@@ -40051,7 +40051,7 @@
 		)
 		(uuid "792e66df-ab3f-420b-b127-1c96e5abee58")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 241.3 133.35 0)
 		(effects
@@ -40205,7 +40205,7 @@
 		)
 		(uuid "80def37d-c8d3-470a-943d-40251f8b1f24")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 452.12 295.91 270)
 		(effects
@@ -40568,7 +40568,7 @@
 		)
 		(uuid "9593cc1e-affb-44e3-8e23-d0d91d70ea1b")
 	)
-	(hierarchical_label "VCC3.3A"
+	(hierarchical_label "+3.3VDAC"
 		(shape passive)
 		(at 317.5 171.45 0)
 		(effects
@@ -40799,7 +40799,7 @@
 		)
 		(uuid "a1bb6ebd-1d09-4164-962d-7afa26497a68")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 447.04 334.01 0)
 		(effects
@@ -40865,7 +40865,7 @@
 		)
 		(uuid "a6889401-ed23-48c8-9ad8-ff1323a3d276")
 	)
-	(hierarchical_label "VCC1.2"
+	(hierarchical_label "+1V2"
 		(shape passive)
 		(at 370.84 161.29 180)
 		(effects
@@ -40942,7 +40942,7 @@
 		)
 		(uuid "a89f06dd-fcd5-452a-8a33-29ecd74e182e")
 	)
-	(hierarchical_label "VCC5"
+	(hierarchical_label "+5V"
 		(shape passive)
 		(at 280.035 36.195 180)
 		(effects
@@ -41250,7 +41250,7 @@
 		)
 		(uuid "bd639124-d36a-4928-99a4-6a4534ee8939")
 	)
-	(hierarchical_label "VCC3.3A"
+	(hierarchical_label "+3.3VDAC"
 		(shape passive)
 		(at 481.33 36.83 0)
 		(effects
@@ -41580,7 +41580,7 @@
 		)
 		(uuid "ce8a5324-4f41-4207-a207-eca24582edc3")
 	)
-	(hierarchical_label "VCC3.3"
+	(hierarchical_label "+3.3V"
 		(shape passive)
 		(at 510.54 290.83 270)
 		(effects
@@ -41712,7 +41712,7 @@
 		)
 		(uuid "d58add24-fe4a-4b1a-af9d-4f959d07f5a3")
 	)
-	(hierarchical_label "VCC5"
+	(hierarchical_label "+5V"
 		(shape passive)
 		(at 96.52 350.52 0)
 		(effects
@@ -41778,7 +41778,7 @@
 		)
 		(uuid "d7dd4370-660c-48eb-a268-de345f0283c1")
 	)
-	(hierarchical_label "VCC1.2"
+	(hierarchical_label "+1V2"
 		(shape passive)
 		(at 401.32 148.59 90)
 		(effects
@@ -42108,7 +42108,7 @@
 		)
 		(uuid "ede88aab-e730-4083-9450-0b7a45f98d71")
 	)
-	(hierarchical_label "VCC3.3A"
+	(hierarchical_label "+3.3VDAC"
 		(shape passive)
 		(at 483.87 87.63 0)
 		(effects
@@ -42284,7 +42284,7 @@
 		)
 		(uuid "fd927271-6ed1-476c-868e-8972ef727a84")
 	)
-	(hierarchical_label "VCC1.2"
+	(hierarchical_label "+1V2"
 		(shape passive)
 		(at 354.33 181.61 180)
 		(effects
