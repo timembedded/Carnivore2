@@ -30760,16 +30760,6 @@
 	)
 	(wire
 		(pts
-			(xy 78.74 254) (xy 81.28 254)
-		)
-		(stroke
-			(width 0.254)
-			(type default)
-		)
-		(uuid "224aef67-1839-4b4e-b8a2-d2ab3d592f27")
-	)
-	(wire
-		(pts
 			(xy 215.9 146.05) (xy 215.9 143.51)
 		)
 		(stroke
@@ -32110,7 +32100,7 @@
 	)
 	(wire
 		(pts
-			(xy 93.98 254) (xy 91.44 254)
+			(xy 93.98 232.41) (xy 91.44 232.41)
 		)
 		(stroke
 			(width 0.254)
@@ -32407,6 +32397,16 @@
 			(type default)
 		)
 		(uuid "525f5b40-a40b-4a1c-ab8b-28d356b881cd")
+	)
+	(wire
+		(pts
+			(xy 78.74 254) (xy 93.98 254)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "529b6f5b-9296-473a-a505-5465c4b45e1c")
 	)
 	(wire
 		(pts
@@ -40163,7 +40163,7 @@
 	)
 	(hierarchical_label "~{SLT_WAIT}"
 		(shape passive)
-		(at 93.98 254 0)
+		(at 93.98 232.41 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -40953,7 +40953,7 @@
 		)
 		(uuid "a8f554f5-a2ec-48ce-bf92-db42e5d7bfd3")
 	)
-	(hierarchical_label "~{SLT_WAIT}"
+	(hierarchical_label "~{X_SLT_WAIT}"
 		(shape passive)
 		(at 92.71 200.66 0)
 		(effects
@@ -41965,6 +41965,17 @@
 		)
 		(uuid "e19082c8-8eb2-4907-9475-a23dba014467")
 	)
+	(hierarchical_label "~{X_SLT_WAIT}"
+		(shape passive)
+		(at 93.98 254 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "e1f97201-5e4f-4545-a16f-63e120ad860e")
+	)
 	(hierarchical_label "GND"
 		(shape passive)
 		(at 114.3 345.44 0)
@@ -42162,6 +42173,17 @@
 			(justify left)
 		)
 		(uuid "f40e1382-26b4-4735-913f-e4ad0f919a69")
+	)
+	(hierarchical_label "~{X_SLT_WAIT}"
+		(shape passive)
+		(at 81.28 232.41 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "f67e3d29-04b1-49c4-9873-8439830f1e10")
 	)
 	(hierarchical_label "~{SLT_M1}"
 		(shape passive)
@@ -48889,7 +48911,7 @@
 				)
 			)
 		)
-		(property "DIGIKEY" "RMCF0603FT10K0CT-ND"
+		(property "DIGIKEY" "RMCF0603FT4K70CT-ND"
 			(at 82.55 184.15 0)
 			(effects
 				(font
@@ -51763,7 +51785,7 @@
 	)
 	(symbol
 		(lib_id "Sheet1-altium-import:root_2_R_0805")
-		(at 91.44 254 0)
+		(at 91.44 232.41 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -51771,7 +51793,7 @@
 		(dnp no)
 		(uuid "a1886677-722d-4c8b-bfc2-23978d80e9cd")
 		(property "Reference" "R26"
-			(at 81.28 252.73 0)
+			(at 86.106 229.362 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -51780,7 +51802,7 @@
 			)
 		)
 		(property "Value" "330E"
-			(at 91.44 254 0)
+			(at 91.44 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -51790,7 +51812,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 91.44 254 0)
+			(at 91.44 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -51799,7 +51821,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 91.44 254 0)
+			(at 91.44 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -51808,7 +51830,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 91.44 254 0)
+			(at 91.44 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -51816,7 +51838,7 @@
 			)
 		)
 		(property "DIGIKEY" "RMCF0603FT330RCT-ND"
-			(at 91.44 254 0)
+			(at 91.44 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -57286,7 +57308,7 @@
 				(justify top)
 			)
 		)
-		(property "Value" "4k7"
+		(property "Value" "470E"
 			(at 83.82 200.66 0)
 			(effects
 				(font
@@ -57321,7 +57343,7 @@
 				)
 			)
 		)
-		(property "DIGIKEY" "RMCF0603FT10K0CT-ND"
+		(property "DIGIKEY" "RMCF0603FT470RCT-ND"
 			(at 82.55 196.85 0)
 			(effects
 				(font
